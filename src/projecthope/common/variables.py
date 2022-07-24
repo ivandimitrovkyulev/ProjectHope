@@ -26,3 +26,13 @@ network_ids = {
     "43114": "Avalanche",
     "250": "Fantom",
 }
+
+network_names = {
+    "Ethereum": "1",
+    "Binance": "56",
+    "Polygon": "137",
+    "Optimism": "10",
+    "Arbitrum": "42161",
+    "Avalanche": "43114",
+    "Fantom": "250",
+}

@@ -1,0 +1,29 @@
+{
+    "base_tokens": {
+        "USDC": {
+            "networks": {
+                "Ethereum":  {"address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "decimals": 6},
+                "Binance":   {"address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", "decimals": 18},
+                "Polygon":   {"address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", "decimals": 6},
+                "Optimism":  {"address": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607", "decimals": 6},
+                "Arbitrum":  {"address": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "decimals": 6},
+                "Avalanche": {"address": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664", "decimals": 6},
+                "Fantom":    {"address": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75", "decimals": 6}
+            },
+            "swap_amount": 1000
+        }
+    },
+    "arb_tokens": {
+        "gOHM": {
+            "networks": {
+                "Ethereum":  {"address": "0x0ab87046fBb341D058F17CBC4c1133F25a20a52f", "decimals": 18},
+                "Polygon":   {"address": "0xd8cA34fd379d9ca3C6Ee3b3905678320F5b45195", "decimals": 18},
+                "Optimism":  {"address": "0x0b5740c6b4a97f90eF2F0220651Cca420B868FfB", "decimals": 18},
+                "Arbitrum":  {"address": "0x8D9bA570D6cb60C7e3e0F31343Efe75AB8E65FB1", "decimals": 18},
+                "Avalanche": {"address": "0x321E7092a180BB43555132ec53AaA65a5bF84251", "decimals": 18},
+                "Fantom":    {"address": "0x91fa20244Fb509e8289CA630E5db3E9166233FDc", "decimals": 18}
+            }
+        }
+    }
+
+}
