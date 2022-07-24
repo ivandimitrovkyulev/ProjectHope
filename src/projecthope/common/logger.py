@@ -1,6 +1,6 @@
 import logging
 
-from src.projecthope.variables import log_format
+from src.projecthope.common.variables import log_format
 
 
 def logger_setup(

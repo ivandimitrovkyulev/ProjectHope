@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import TypeVar
 
 from src.projecthope.common.message import telegram_send_message
-from src.projecthope.variables import time_format
+from src.projecthope.common.variables import time_format
 
 
 # Define a Function type

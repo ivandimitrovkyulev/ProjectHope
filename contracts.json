@@ -1,111 +1,50 @@
 { 
-    "optimism_dai": {
-        "url": "https://optimistic.etherscan.io/address/0xb3C68a491608952Cb1257FC9909a537a0173b63B",
-        "bridge_address": "0xb3C68a491608952Cb1257FC9909a537a0173b63B",
-        "network": "Optimism",
-        "token": "hDAI",
-        "token_address": "0x56900d66D74Cb14E3c86895789901C9135c95b16",
-        "decimals": 18,
-        "min_amount": 49000
+    "Ethereum": {
+        "id": "1",
+        "tokens": {
+            "USDC": {"decimals": 6, "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"},
+            "GOHM": {"decimals": 18, "address": "0x0ab87046fBb341D058F17CBC4c1133F25a20a52f"}
+        }
     },
-    "optimism_usdt": {
-        "url": "https://optimistic.etherscan.io/address/0x7D269D3E0d61A05a0bA976b7DBF8805bF844AF3F",
-        "bridge_address": "0x7D269D3E0d61A05a0bA976b7DBF8805bF844AF3F",
-        "network": "Optimism",
-        "token": "hUSDT",
-        "token_address": "0x2057C8ECB70Afd7Bee667d76B4CD373A325b1a20",
-        "decimals": 6,
-        "min_amount": 29000
+    "Binance": {
+        "id": "56",
+        "tokens": {
+            "USDC": {"decimals": 18, "address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"}
+        }
     },
-    "optimism_usdc": {
-        "url": "https://optimistic.etherscan.io/address/0x2ad09850b0CA4c7c1B33f5AcD6cBAbCaB5d6e796",
-        "bridge_address": "0x2ad09850b0CA4c7c1B33f5AcD6cBAbCaB5d6e796",
-        "network": "Optimism",
-        "token": "hUSDC",
-        "token_address": "0x25D8039bB044dC227f741a9e381CA4cEAE2E6aE8",
-        "decimals": 6,
-        "min_amount": 49000
+    "Polygon": {
+        "id": "137",
+        "tokens": {
+            "USDC": {"decimals": 6, "address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"},
+            "GOHM": {"decimals": 18, "address": "0xd8cA34fd379d9ca3C6Ee3b3905678320F5b45195"}
+        }
     },
-    "arbitrum_dai": {
-        "url": "https://arbiscan.io/address/0xe7f40bf16ab09f4a6906ac2caa4094ad2da48cc2",
-        "bridge_address": "0xe7F40BF16AB09f4a6906Ac2CAA4094aD2dA48Cc2",
-        "network": "Arbitrum",
-        "token": "hDAI",
-        "token_address": "0x46ae9BaB8CEA96610807a275EBD36f8e916b5C61",
-        "decimals": 18,
-        "min_amount": 49000
+    "Optimism": {
+        "id": "10",
+        "tokens": {
+            "USDC": {"decimals": 6, "address": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"},
+            "GOHM": {"decimals": 18, "address": "0x0b5740c6b4a97f90eF2F0220651Cca420B868FfB"}
+        }
     },
-    "arbitrum_usdt": {
-        "url": "https://arbiscan.io/address/0xcb0a4177e0a60247c0ad18be87f8edff6dd30283",
-        "bridge_address": "0xCB0a4177E0A60247C0ad18Be87f8eDfF6DD30283",
-        "network": "Arbitrum",
-        "token": "hUSDT",
-        "token_address": "0x12e59C59D282D2C00f3166915BED6DC2F5e2B5C7",
-        "decimals": 6,
-        "min_amount": 29000
+    "Arbitrum": {
+        "id": "42161",
+        "tokens": {
+            "USDC": {"decimals": 6, "address": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"},
+            "GOHM": {"decimals": 18, "address": "0x8D9bA570D6cb60C7e3e0F31343Efe75AB8E65FB1"}
+        }
     },
-    "arbitrum_usdc": {
-        "url": "https://arbiscan.io/address/0xe22d2bedb3eca35e6397e0c6d62857094aa26f52",
-        "bridge_address": "0xe22D2beDb3Eca35E6397e0C6D62857094aA26F52",
-        "network": "Arbitrum",
-        "token": "hUSDC",
-        "token_address": "0x0ce6c85cF43553DE10FC56cecA0aef6Ff0DD444d",
-        "decimals": 6,
-        "min_amount": 49000
+    "Avalanche": {
+        "id": "43114",
+        "tokens": {
+            "USDC": {"decimals": 6, "address": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664"},
+            "GOHM": {"decimals": 18, "address": "0x321E7092a180BB43555132ec53AaA65a5bF84251"}
+        }
     },
-    "polygon_dai": {
-        "url": "https://polygonscan.com/address/0x28529fec439cff6d7d1d5917e956dee62cd3be5c",
-        "bridge_address": "0x28529fec439cfF6d7D1D5917e956dEE62Cd3BE5c",
-        "network": "Polygon",
-        "token": "hDAI",
-        "token_address": "0xb8901acB165ed027E32754E0FFe830802919727f",
-        "decimals": 18,
-        "min_amount": 49000
-    },
-    "polygon_usdt": {
-        "url": "https://polygonscan.com/address/0x8741Ba6225A6BF91f9D73531A98A89807857a2B3",
-        "bridge_address": "0x8741Ba6225A6BF91f9D73531A98A89807857a2B3",
-        "network": "Polygon",
-        "token": "hUSDT",
-        "token_address": "0x9F93ACA246F457916E49Ec923B8ed099e313f763",
-        "decimals": 6,
-        "min_amount": 29000
-    },
-    "polygon_usdc": {
-        "url": "https://polygonscan.com/address/0x76b22b8C1079A44F1211D867D68b1eda76a635A7",
-        "bridge_address": "0x76b22b8C1079A44F1211D867D68b1eda76a635A7",
-        "network": "Polygon",
-        "token": "hUSDC",
-        "token_address": "0x9ec9551d4A1a1593b0ee8124D98590CC71b3B09D",
-        "decimals": 6,
-        "min_amount": 49000
-    },
-    "gnosis_dai": {
-        "url": "https://blockscout.com/xdai/mainnet/address/0x6C928f435d1F3329bABb42d69CCF043e3900EcF1/token-transfers#address-tabs",
-        "bridge_address": "0x6C928f435d1F3329bABb42d69CCF043e3900EcF1",
-        "network": "Gnosis",
-        "token": "hDAI",
-        "token_address": "0xB1ea9FeD58a317F81eEEFC18715Dd323FDEf45c4",
-        "decimals": 18,
-        "min_amount": 49000
-    },
-    "gnosis_usdt": {
-        "url": "https://blockscout.com/xdai/mainnet/address/0x49094a1B3463c4e2E82ca41b8e6A023bdd6E222f/token-transfers#address-tabs",
-        "bridge_address": "0x49094a1B3463c4e2E82ca41b8e6A023bdd6E222f",
-        "network": "Gnosis",
-        "token": "hUSDT",
-        "token_address": "0x91f8490eC27cbB1b2FaEdd29c2eC23011d7355FB",
-        "decimals": 6,
-        "min_amount": 29000
-    },
-    "gnosis_usdc": {
-        "url": "https://blockscout.com/xdai/mainnet/address/0x76b22b8C1079A44F1211D867D68b1eda76a635A7/token-transfers#address-tabs",
-        "bridge_address": "0x76b22b8C1079A44F1211D867D68b1eda76a635A7",
-        "network": "Gnosis",
-        "token": "hUSDC",
-        "token_address": "0x9ec9551d4A1a1593b0ee8124D98590CC71b3B09D",
-        "decimals": 6,
-        "min_amount": 49000
-    },
-    "filter_by": ["to", "0x0000000000000000000000000000000000000000"]
+    "Fantom": {
+        "id": "250",
+        "tokens": {
+            "USDC": {"decimals": 6, "address": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75"},
+            "GOHM": {"decimals": 18, "address": "0x91fa20244Fb509e8289CA630E5db3E9166233FDc"}
+        }
+    }
 }

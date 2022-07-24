@@ -6,7 +6,7 @@ from typing import Optional
 from requests.exceptions import ConnectionError
 
 from src.projecthope.common.logger import log_error
-from src.projecthope.variables import (
+from src.projecthope.common.variables import (
     TOKEN,
     CHAT_ID_ALERTS,
     CHAT_ID_DEBUG,
