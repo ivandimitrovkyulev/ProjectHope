@@ -14,12 +14,13 @@ from json.decoder import JSONDecodeError
 
 from web3 import Web3
 from web3.contract import Contract
+from web3.gas_strategies.time_based import medium_gas_price_strategy
 
 from src.projecthope.common.logger import (
     log_txns,
     log_error,
 )
-from src.projecthope.variables import time_format
+from src.projecthope.common.variables import time_format
 from src.projecthope.common.message import telegram_send_message
 
 
@@ -61,6 +62,19 @@ class EvmContract:
             message = f"Contract instance not created for {self.name}, {self.bridge_address}. {e}"
             log_error.warning(message)
             print(message)
+
+    @staticmethod
+    def gas_price():
+
+        load_dotenv()
+        infura_url = f"https://mainnet.infura.io/v3/{os.getenv('PROJECT_ID')}"
+        w3 = Web3(Web3.HTTPProvider(infura_url))
+
+        w3.eth.set_gas_price_strategy(medium_gas_price_strategy)
+
+        gas_price = w3.eth.generate_gas_price()
+
+        return gas_price
 
     @staticmethod
     def run_contract_function(contract_instance: Contract, function_name: str, args_list: list):
