@@ -1,9 +1,7 @@
 from typing import (
     List,
-    Iterator,
     Dict,
 )
-
 from src.projecthope.common.variables import network_names
 
 
@@ -63,20 +61,3 @@ def parse_args(data: dict, token_name_a: str, token_name_b: str, amount: float =
         args_ab.append([network_id, from_token, to_token, amount])
 
     return args_ab
-
-
-def max_swap(results: Iterator) -> tuple:
-    """
-    Analyses a list of swaps and returns the one with maximum amount.
-
-    :param results: Generator object containing swaps
-    :return: Tuple (dictionary, max_amount)
-    """
-
-    # Create dict and hash swap: all_data
-    swaps = {res['to_token']['amount']: res for res in results if res}
-
-    max_amount = max(swaps)
-    dictionary = swaps[max_amount]
-
-    return dictionary, max_amount

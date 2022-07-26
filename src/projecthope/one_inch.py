@@ -6,16 +6,17 @@ from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from requests.adapters import HTTPAdapter
 from concurrent.futures import ThreadPoolExecutor
-from typing import Tuple
 
+from typing import (
+    Tuple,
+    Iterator,
+)
+
+from src.projecthope.common.helpers import parse_args
 from src.projecthope.common.message import telegram_send_message
 from src.projecthope.common.logger import (
     log_arbitrage,
     log_error,
-)
-from src.projecthope.common.helpers import (
-    parse_args,
-    max_swap,
 )
 from src.projecthope.common.variables import (
     time_format,
@@ -41,6 +42,23 @@ class Swap:
     gas: int
     from_token: Token
     to_token: Token
+
+
+def max_swap(results: Iterator[Swap]) -> Tuple[Swap, float]:
+    """
+    Analyses a list of swaps and returns the one with maximum amount.
+
+    :param results: Generator object containing swaps
+    :return: Tuple (dictionary, max_amount)
+    """
+
+    # Create dict with key-swap and value-all_data
+    swaps = {swap.to_token.amount: swap for swap in results if swap}
+
+    max_amount = max(swaps)
+    swap = swaps[max_amount]
+
+    return swap, max_amount
 
 
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_float: float,
@@ -161,13 +179,14 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
     if arbitrage >= min_arb:
         timestamp = datetime.now().astimezone().strftime(time_format)
         telegram_msg = f"{timestamp}\n" \
-                       f"1. Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {swap_ab.chain}\n" \
-                       f"2. Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {swap_ba.chain}\n" \
-                       f"<a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
-                       f"-->Arbitrage: {arbitrage:,} {base_token}</a>"
+                       f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
+                       f"Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {swap_ab.chain}</a>\n" \
+                       f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
+                       f"Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {swap_ba.chain}</a>\n" \
+                       f"-->Arbitrage: {arbitrage:,} {base_token}"
 
-        terminal_msg = f"1. Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {swap_ab.chain}\n" \
-                       f"2. Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {swap_ba.chain}\n" \
+        terminal_msg = f"1) {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {swap_ab.chain}\n" \
+                       f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {swap_ba.chain}\n" \
                        f"-->Arbitrage: {arbitrage:,} {base_token}"
 
         # Send arbitrage to ALL alerts channel and log

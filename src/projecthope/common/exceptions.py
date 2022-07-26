@@ -26,8 +26,8 @@ def exit_handler(
 
     timestamp = datetime.now().astimezone().strftime(time_format)
 
-    message = f"* WARNING *\n" \
-              f"{timestamp}: {program_name} has stopped.\n" \
+    message = f"<b>⚠️WARNING</b> - {timestamp}\n" \
+              f"<b>{program_name}</b> stopped.\n" \
               f"Please contact your administrator.\n" \
               f"{info}"
 

@@ -12,10 +12,14 @@ from web3 import (
 
 
 class EvmContract:
-    """
-    EVM compatible smart contract.
-    """
+    """EVM compatible smart contract class."""
+
     def __init__(self, project_id: str = ""):
+        """
+        Set up Infura as node provider.
+
+        :param project_id: Infura Project ID. If not provided it will look for a 'PROJECT_ID' in a .env file.
+        """
         if project_id == "":
             load_dotenv()
             self.infura_url = f"https://mainnet.infura.io/v3/{os.getenv('PROJECT_ID')}"
@@ -24,13 +28,15 @@ class EvmContract:
 
         self.w3 = Web3(Web3.HTTPProvider(self.infura_url))
 
-        #Construct and set gas strategy
+        # Construct and set gas strategy
         gas_str = construct_time_based_gas_price_strategy(max_wait_seconds=30, sample_size=60,
                                                           probability=98, weighted=False)
         self.w3.eth.set_gas_price_strategy(gas_str)
 
-        # Set a time based cache
+        # Set up various caches
         self.w3.middleware_onion.add(middleware.time_based_cache_middleware)
+        self.w3.middleware_onion.add(middleware.latest_block_based_cache_middleware)
+        self.w3.middleware_onion.add(middleware.simple_cache_middleware)
 
     def eth_gas_price(self) -> int:
         """
