@@ -34,45 +34,57 @@ TOKEN=<telegram-token-for-your-bot>
 CHAT_ID_ALERTS=<id-of-telegram-chat-for-alerts>
 
 CHAT_ID_DEBUG=<id-of-telegram-chat-for-debugging>
+
+PROJECT_ID=<node-provider-id>
 ```
 <br/>
 
 ## Running the script
 <br/>
 
-To screen https://synapseprotocol.com for arbitrage:
+To start screening for arbitrage:
 ```
-var="$(cat input.json)"
+var="$(cat coins.json)"
 
 python3 main.py -s "$var"
 ```
 
-Where **input.json** are variables for screening:
+Where **coins.json** are variables for screening:
 ```
-{ 
-    "USDC": {
-        "swap_amount": 50000,
-        "arbitrage": 10,
-        "networks": {
-            "Ethereum":  {"decimals": 6,  "chain_id": 1,     "token": "USDC"},
-            "Optimism":  {"decimals": 6,  "chain_id": 10,    "token": "USDC"},
-            "Fantom":    {"decimals": 6,  "chain_id": 250,   "token": "USDC"},
+{
+    "base_tokens": {
+        "USDC": {
+            "networks": {
+                "Ethereum":  {"address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "decimals": 6},
+                "Binance":   {"address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", "decimals": 18},
+                "Polygon":   {"address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", "decimals": 6},
+            }
         }
     },
-    "ETH": {
-        "swap_amount": 50,
-        "arbitrage": 0.02,
-        "networks": {
-            "Ethereum":  {"decimals": 18, "chain_id": 1,     "token": "ETH"},
-            "Optimism":  {"decimals": 18, "chain_id": 10,    "token": "WETH"},
-            "Fantom":    {"decimals": 18, "chain_id": 250,   "token": "FTM_ETH"},
+    "arb_tokens": {
+        "coinX": {
+            "networks": {
+                "Ethereum":  {"address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "decimals": 18},
+                "Binance":   {"address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", "decimals": 18},
+                "Polygon":   {"address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", "decimals": 18},
+            },
+            "swap_amount": 10000, "min_arb": 100
+        },
+        "coinY": {
+            "networks": {
+                "Ethereum":  {"address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "decimals": 18},
+                "Binance":   {"address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", "decimals": 18},
+                "Polygon":   {"address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", "decimals": 18},
+            },
+            "swap_amount": 10000, "min_arb": 100
         }
     }
+
 }
 ```
 <br>
 
-All log filles are saved in **./synapse/logs**
+All log filles are saved in **./ProjectHope/logs**
 
 For help:
 ```
@@ -89,6 +101,7 @@ docker build . -t <docker-image-name>
 
 # To run container
 docker run -it <image-id> python3 main.py -s "$var"
+docker run --name="projecthope" -it "<image-id>" python3 main.py "$var"
 ```
 
 <br>

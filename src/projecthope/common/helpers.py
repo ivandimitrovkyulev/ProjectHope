@@ -1,9 +1,32 @@
 from typing import (
     List,
     Iterator,
+    Dict,
 )
 
 from src.projecthope.common.variables import network_names
+
+
+def compare_lists(new_list: List[Dict[str, str]], old_list: List[Dict[str, str]],
+                  keyword: str = 'hash') -> list:
+    """
+    Compares two lists of dictionaries.
+
+    :param new_list: New list
+    :param old_list: Old list
+    :param keyword: Keyword to compare with
+    :return: List of dictionaries that are in new list but not in old list
+    """
+
+    try:
+        hashes = [txn[keyword] for txn in old_list]
+
+        list_diff = [txn for txn in new_list if txn[keyword] not in hashes]
+
+        return list_diff
+
+    except TypeError:
+        return []
 
 
 def parse_args(data: dict, token_name_a: str, token_name_b: str, amount: float = 0) -> List[list]:

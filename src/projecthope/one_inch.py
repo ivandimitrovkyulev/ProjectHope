@@ -2,9 +2,11 @@ import json
 import requests
 
 from datetime import datetime
+from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from requests.adapters import HTTPAdapter
 from concurrent.futures import ThreadPoolExecutor
+from typing import Tuple
 
 from src.projecthope.common.message import telegram_send_message
 from src.projecthope.common.logger import (
@@ -19,6 +21,26 @@ from src.projecthope.common.variables import (
     time_format,
     network_ids,
 )
+
+
+@dataclass
+class Token:
+    """Class for keeping track of token data.
+    Token name, Token decimals, Amount to swap"""
+    token: str
+    decimals: int
+    amount: float
+
+
+@dataclass
+class Swap:
+    """Class for keeping track of swap data.
+    Network name, Network id, gas, FromToken, ToToken"""
+    chain: str
+    id: str
+    gas: int
+    from_token: Token
+    to_token: Token
 
 
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_float: float,
@@ -77,14 +99,14 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_floa
 
     gas = data['estimatedGas']
 
-    return {
-        "network": network_name, "network_id": network_id, "gas": gas,
-        "from_token": {"token": from_token_name, "amount": amount_float, "decimals": from_token_decimal},
-        "to_token": {"token": to_token_name, "amount": swap_out_float, "decimals": to_token_decimal}
-    }
+    from_token = Token(from_token_name, from_token_decimal, amount_float)
+    to_token = Token(to_token_name, to_token_decimal, swap_out_float)
+    swap = Swap(network_name, network_id, gas, from_token, to_token)
+
+    return swap
 
 
-def compare_swaps(data: dict, base_token: str, arb_token: str) -> tuple:
+def compare_swaps(data: dict, base_token: str, arb_token: str) -> Tuple[Swap, Swap]:
     """
     Checks 1inch supported blockchains for arbitrage between 2 tokens.
 
@@ -125,16 +147,13 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
 
     min_arb = data['arb_tokens'][arb_token]['min_arb']
 
-    base_round = int(swap_ab['from_token']['decimals'] / 3)
-    arb_round = int(swap_ab['to_token']['decimals'] / 3)
+    base_round = int(swap_ab.from_token.decimals / 3)
+    arb_round = int(swap_ab.to_token.decimals / 3)
 
-    base_swap_in = round(swap_ab['from_token']['amount'], base_round)
-    arb_swap_out = round(swap_ab['to_token']['amount'], arb_round)
-    network_1 = swap_ab['network']
-    network_1_id = swap_ab['network_id']
-    base_swap_out = round(swap_ba['to_token']['amount'], base_round)
-    arb_swap_in = round(swap_ba['from_token']['amount'], arb_round)
-    network_2 = swap_ba['network']
+    base_swap_in = round(swap_ab.from_token.amount, base_round)
+    arb_swap_out = round(swap_ab.to_token.amount, arb_round)
+    base_swap_out = round(swap_ba.to_token.amount, base_round)
+    arb_swap_in = round(swap_ba.from_token.amount, arb_round)
 
     arbitrage = base_swap_out - base_swap_in
     arbitrage = round(arbitrage, base_round)
@@ -142,13 +161,13 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
     if arbitrage >= min_arb:
         timestamp = datetime.now().astimezone().strftime(time_format)
         telegram_msg = f"{timestamp}\n" \
-                       f"1. Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {network_1}\n" \
-                       f"2. Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {network_2}\n" \
-                       f"<a href='https://app.1inch.io/#/{network_1_id}/swap/{base_token}/{arb_token}'>" \
+                       f"1. Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {swap_ab.chain}\n" \
+                       f"2. Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {swap_ba.chain}\n" \
+                       f"<a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
                        f"-->Arbitrage: {arbitrage:,} {base_token}</a>"
 
-        terminal_msg = f"1. Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {network_1}\n" \
-                       f"2. Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {network_2}\n" \
+        terminal_msg = f"1. Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {swap_ab.chain}\n" \
+                       f"2. Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {swap_ba.chain}\n" \
                        f"-->Arbitrage: {arbitrage:,} {base_token}"
 
         # Send arbitrage to ALL alerts channel and log

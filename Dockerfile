@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.10
 
 
 ENV PYTHONFAULTHANDLER=1 \
@@ -13,7 +13,7 @@ ENV PYTHONFAULTHANDLER=1 \
 RUN pip install "poetry==$POETRY_VERSION"
 
 # Copy only requirements to cache them in docker layer
-WORKDIR ./hop_etherscan
+WORKDIR ./projecthope
 COPY poetry.lock pyproject.toml .
 
 # Project init
@@ -23,6 +23,6 @@ RUN poetry config virtualenvs.create false \
 # Copy all project files
 COPY src ./src
 COPY logs ./logs
-COPY .env etherscan.py .
+COPY .env main.py .
 
 CMD ["pwd"]
