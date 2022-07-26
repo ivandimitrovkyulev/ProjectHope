@@ -23,6 +23,18 @@
                 "Fantom":    {"address": "0x91fa20244Fb509e8289CA630E5db3E9166233FDc", "decimals": 18}
             },
             "swap_amount": 10000, "min_arb": -1000
+        },
+        "STG": {
+            "networks": {
+                "Ethereum":  {"address": "0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6", "decimals": 18},
+                "Binance":   {"address": "0xB0D502E938ed5f4df2E681fE6E419ff29631d62b", "decimals": 18},
+                "Polygon":   {"address": "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590", "decimals": 18},
+                "Optimism":  {"address": "0x296F55F8Fb28E498B858d0BcDA06D955B2Cb3f97", "decimals": 18},
+                "Arbitrum":  {"address": "0x6694340fc020c5E6B96567843da2df01b2CE1eb6", "decimals": 18},
+                "Avalanche": {"address": "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590", "decimals": 18},
+                "Fantom":    {"address": "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590", "decimals": 18}
+            },
+            "swap_amount": 10000, "min_arb": -1000
         }
     }
 
