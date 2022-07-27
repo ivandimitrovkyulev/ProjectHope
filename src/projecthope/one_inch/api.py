@@ -3,7 +3,6 @@ import os
 
 import requests
 import requests_cache
-from requests_cache import install_cache
 
 from datetime import datetime
 from json.decoder import JSONDecodeError
@@ -50,6 +49,43 @@ def max_swap(results: Iterator[Swap]) -> Tuple[Swap, float]:
     swap = swaps[max_amount]
 
     return swap, max_amount
+
+
+def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005510, timeout: int = 3) -> dict:
+    """
+    Calculates fees on Ethereum in USD dollars. Adds 'gas_price' and 'usdc_cost' to gas_info dictionary.
+    Queries https://etherscan.io for ETH/USD info and caches result to avoid rate limit.
+
+    :param gas_info: Dictionary with gas_info data
+    :param gas_amount: Gas amount for transaction to be executed
+    :param bridge_fees_eth: Eth bridge fees, default 0.005510 ETH
+    :param timeout: Maximum time to wait per GET request
+    :return: Dictionary with updated gas_info data
+    """
+    gas_price = contract.eth_gas_price()  # Get ETH gas price from Web3
+    gas_info['gas_price'] = gas_price
+
+    api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
+    try:
+        # Cache only Etherscan API get requests!
+        with requests_cache.enabled('etherscan_cache', backend='sqlite', expire_after=180):
+            response = requests.get(api, timeout=timeout)
+    except ConnectionError as e:
+        log_error.warning(f"'ConnectionError' - {e}")
+        return gas_info
+
+    try:
+        data = json.loads(response.content)
+        eth_usdc_price = float(data['result']['ethusd'])
+    except JSONDecodeError:
+        log_error.warning(f"'JSONError' {response.status_code} - {response.url}")
+        return gas_info
+
+    gas_cost_usdc = ((gas_amount * gas_price) / 10 ** 18) * eth_usdc_price
+    bridge_cost_usdc = bridge_fees_eth * eth_usdc_price
+    gas_info['usdc_cost'] = gas_cost_usdc + bridge_cost_usdc
+
+    return gas_info
 
 
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_float: float,
@@ -106,31 +142,16 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_floa
     swap_out_float = swap_out / (10 ** to_token_decimal)
 
     gas_amount = data['estimatedGas']
-    gas = {"gas_amount": gas_amount}
+    gas_info = {"gas_amount": gas_amount}
 
-    # Calculate fees on Ethereum
+    # Calculate fees on Ethereum only and add to gas_info dict
     if int(network_id) == 1:
-        gas_price = contract.eth_gas_price()
-        gas['gas_price'] = gas_price
-        gas_cost_eth = (gas_amount * gas_price) / 10 ** 18
-
-        api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
-        try:
-            # Cache only Etherscan API get requests!
-            with requests_cache.enabled('etherscan_cache', backend='sqlite', expire_after=180):
-                response = requests.get(api, timeout=timeout)
-        except ConnectionError as e:
-            log_error.warning(f"'ConnectionError' - {e}")
-
-        data = json.loads(response.content)
-        eth_usdc_price = float(data['result']['ethusd'])
-        gas_cost_usdc = gas_cost_eth * eth_usdc_price
-        gas['usdc_cost'] = gas_cost_usdc
+        get_eth_fees(gas_info, gas_amount, timeout=timeout)
 
     from_token = Token(from_token_name, from_token_decimal, amount_float)
     to_token = Token(to_token_name, to_token_decimal, swap_out_float)
 
-    swap = Swap(network_name, network_id, gas, from_token, to_token)
+    swap = Swap(network_name, network_id, gas_info, from_token, to_token)
 
     return swap
 
@@ -176,8 +197,8 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
 
     min_arb = data['arb_tokens'][arb_token]['min_arb']
 
-    base_round = int(swap_ab.from_token.decimals // 3)
-    arb_round = int(swap_ab.to_token.decimals // 3)
+    base_round = int(swap_ab.from_token.decimals // 4)
+    arb_round = int(swap_ab.to_token.decimals // 4)
 
     base_swap_in = round(swap_ab.from_token.amount, base_round)
     arb_swap_out = round(swap_ab.to_token.amount, arb_round)
@@ -203,17 +224,16 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
                        f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}\n" \
                        f"-->Arbitrage: {arbitrage:,} {base_token}"
 
-        if chain1.lower() == "ethereum" or chain2.lower() == "ethereum":
-            fee1 = swap_ab.gas.get('usdc_cost')
-            fee2 = swap_ba.gas.get('usdc_cost')
+        if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
+            fee1 = swap_ab.gas_info.get('usdc_cost')
+            fee2 = swap_ba.gas_info.get('usdc_cost')
             if fee1:
-                usdc_cost = fee1
+                fee_msg = f", swap+bridge fees ~${fee1:,.0f}"
             elif fee2:
-                usdc_cost = fee2
+                fee_msg = f", swap+bridge fees ~${fee2:,.0f}"
             else:
-                usdc_cost = "n/a"
+                fee_msg = f", swap+bridge fees n/a"
 
-            fee_msg = f", fee ${usdc_cost:,.2f}"
             telegram_msg += fee_msg
             terminal_msg += fee_msg
 

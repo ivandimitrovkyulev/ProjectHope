@@ -20,7 +20,7 @@ class Swap:
     Network name, Network id, gas, FromToken, ToToken"""
     chain: str
     id: str
-    gas: Dict[str, int]
+    gas_info: Dict[str, int]
     from_token: Token
     to_token: Token
 

@@ -34,7 +34,7 @@ print(f"{timestamp} - Started screening:")
 for i, arb_token in enumerate(arb_tokens):
     arb_token_networks = [net for net in info['arb_tokens'][arb_token]['networks']
                           if net in info['base_tokens'][base_token]['networks']]
-    print(f"{i}. {arb_token} on {arb_token_networks}\n")
+    print(f"{i}. {arb_token} on {arb_token_networks}")
 
 
 loop_counter = 1
