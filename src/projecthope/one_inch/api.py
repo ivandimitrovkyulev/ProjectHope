@@ -1,8 +1,11 @@
 import json
+import os
+
 import requests
+import requests_cache
+from requests_cache import install_cache
 
 from datetime import datetime
-from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from requests.adapters import HTTPAdapter
 from concurrent.futures import ThreadPoolExecutor
@@ -11,9 +14,13 @@ from typing import (
     Tuple,
     Iterator,
 )
-
+from src.projecthope.blockchain.evm import EvmContract
 from src.projecthope.common.helpers import parse_args
 from src.projecthope.common.message import telegram_send_message
+from src.projecthope.one_inch.datatypes import (
+    Token,
+    Swap,
+)
 from src.projecthope.common.logger import (
     log_arbitrage,
     log_error,
@@ -24,24 +31,8 @@ from src.projecthope.common.variables import (
 )
 
 
-@dataclass
-class Token:
-    """Class for keeping track of token data.
-    Token name, Token decimals, Amount to swap"""
-    token: str
-    decimals: int
-    amount: float
-
-
-@dataclass
-class Swap:
-    """Class for keeping track of swap data.
-    Network name, Network id, gas, FromToken, ToToken"""
-    chain: str
-    id: str
-    gas: int
-    from_token: Token
-    to_token: Token
+# Create an EVM contract class
+contract = EvmContract()
 
 
 def max_swap(results: Iterator[Swap]) -> Tuple[Swap, float]:
@@ -64,7 +55,7 @@ def max_swap(results: Iterator[Swap]) -> Tuple[Swap, float]:
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_float: float,
                 max_retries: int = 3, timeout: int = 3) -> dict or None:
     """
-    Queries https://app.1inch.io for swap out amount between 2 tokens on a given network.
+    Queries https://app.1inch.io for swap_out amount between 2 tokens on a given network.
 
     :param network_id: Network id
     :param from_token: From token (swap in). Tuple format (address, name, decimals)
@@ -74,7 +65,6 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_floa
     :param timeout: Maximum time to wait per GET request
     :return: Swap dictionary
     """
-
     api = f"https://api.1inch.io/v4.0/{network_id}/quote"
     session = requests.Session()
     session.mount("https://", HTTPAdapter(max_retries=max_retries))
@@ -115,10 +105,31 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_floa
     swap_out = float(data['toTokenAmount'])
     swap_out_float = swap_out / (10 ** to_token_decimal)
 
-    gas = data['estimatedGas']
+    gas_amount = data['estimatedGas']
+    gas = {"gas_amount": gas_amount}
+
+    # Calculate fees on Ethereum
+    if int(network_id) == 1:
+        gas_price = contract.eth_gas_price()
+        gas['gas_price'] = gas_price
+        gas_cost_eth = (gas_amount * gas_price) / 10 ** 18
+
+        api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
+        try:
+            # Cache only Etherscan API get requests!
+            with requests_cache.enabled('etherscan_cache', backend='sqlite', expire_after=180):
+                response = requests.get(api, timeout=timeout)
+        except ConnectionError as e:
+            log_error.warning(f"'ConnectionError' - {e}")
+
+        data = json.loads(response.content)
+        eth_usdc_price = float(data['result']['ethusd'])
+        gas_cost_usdc = gas_cost_eth * eth_usdc_price
+        gas['usdc_cost'] = gas_cost_usdc
 
     from_token = Token(from_token_name, from_token_decimal, amount_float)
     to_token = Token(to_token_name, to_token_decimal, swap_out_float)
+
     swap = Swap(network_name, network_id, gas, from_token, to_token)
 
     return swap
@@ -126,7 +137,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_floa
 
 def compare_swaps(data: dict, base_token: str, arb_token: str) -> Tuple[Swap, Swap]:
     """
-    Checks 1inch supported blockchains for arbitrage between 2 tokens.
+    Compares 1inch supported blockchains for arbitrage between 2 tokens.
 
     :param data: Input dictionary data
     :param base_token: Name of Base token being swapped in
@@ -165,13 +176,16 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
 
     min_arb = data['arb_tokens'][arb_token]['min_arb']
 
-    base_round = int(swap_ab.from_token.decimals / 3)
-    arb_round = int(swap_ab.to_token.decimals / 3)
+    base_round = int(swap_ab.from_token.decimals // 3)
+    arb_round = int(swap_ab.to_token.decimals // 3)
 
     base_swap_in = round(swap_ab.from_token.amount, base_round)
     arb_swap_out = round(swap_ab.to_token.amount, arb_round)
     base_swap_out = round(swap_ba.to_token.amount, base_round)
     arb_swap_in = round(swap_ba.from_token.amount, arb_round)
+
+    chain1 = swap_ab.chain
+    chain2 = swap_ba.chain
 
     arbitrage = base_swap_out - base_swap_in
     arbitrage = round(arbitrage, base_round)
@@ -180,16 +194,30 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
         timestamp = datetime.now().astimezone().strftime(time_format)
         telegram_msg = f"{timestamp}\n" \
                        f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
-                       f"Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {swap_ab.chain}</a>\n" \
+                       f"Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}</a>\n" \
                        f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
-                       f"Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {swap_ba.chain}</a>\n" \
+                       f"Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}</a>\n" \
                        f"-->Arbitrage: {arbitrage:,} {base_token}"
 
-        terminal_msg = f"1) {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {swap_ab.chain}\n" \
-                       f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {swap_ba.chain}\n" \
+        terminal_msg = f"1) {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}\n" \
+                       f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}\n" \
                        f"-->Arbitrage: {arbitrage:,} {base_token}"
+
+        if chain1.lower() == "ethereum" or chain2.lower() == "ethereum":
+            fee1 = swap_ab.gas.get('usdc_cost')
+            fee2 = swap_ba.gas.get('usdc_cost')
+            if fee1:
+                usdc_cost = fee1
+            elif fee2:
+                usdc_cost = fee2
+            else:
+                usdc_cost = "n/a"
+
+            fee_msg = f", fee ${usdc_cost:,.2f}"
+            telegram_msg += fee_msg
+            terminal_msg += fee_msg
 
         # Send arbitrage to ALL alerts channel and log
         telegram_send_message(telegram_msg)
         log_arbitrage.info(terminal_msg)
-        print(terminal_msg)
+        print(f"{terminal_msg}\n")
