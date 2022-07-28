@@ -176,7 +176,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> Tuple[Swap, Sw
     # Query networks for Base->Arb swap out
     args_ab = parse_args(data, base_token, arb_token)
     with ThreadPoolExecutor(max_workers=len(args_ab)) as pool:
-        results = pool.map(lambda p: get_swapout(*p), args_ab, timeout=30)
+        results = pool.map(lambda p: get_swapout(*p), args_ab, timeout=10)
 
     # Get the maximum swap out
     max_swap_ab, max_amount_ab = max_swap(results)
@@ -184,7 +184,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> Tuple[Swap, Sw
     # Query networks for Arb->Base swap out
     args_ba = parse_args(data, arb_token, base_token, max_amount_ab)
     with ThreadPoolExecutor(max_workers=len(args_ba)) as pool:
-        results = pool.map(lambda p: get_swapout(*p), args_ba, timeout=30)
+        results = pool.map(lambda p: get_swapout(*p), args_ba, timeout=10)
 
     # Get the maximum swap out
     max_swap_ba, _ = max_swap(results)
@@ -194,7 +194,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> Tuple[Swap, Sw
 
 def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
     """
-    Alerts via Telegram for arbitrage if found.
+    Alerts via Telegram for arbitrage between 2 tokens.
 
     :param data: Input dictionary data
     :param base_token: Name of Base token being swapped in

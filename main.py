@@ -8,6 +8,7 @@ from time import (
     sleep,
     perf_counter,
 )
+from concurrent.futures import ThreadPoolExecutor
 
 from src.projecthope.common.exceptions import exit_handler
 from src.projecthope.one_inch.api import alert_arb
@@ -26,7 +27,6 @@ info = json.loads(sys.argv[-1])
 timestamp = datetime.now().astimezone().strftime(time_format)
 
 base_token = "USDC"
-base_tokens = [token for token in info['base_tokens']]
 arb_tokens = [token for token in info['arb_tokens']]
 
 
@@ -41,8 +41,9 @@ loop_counter = 1
 while True:
     start = perf_counter()
 
-    for arb_token in arb_tokens:
-        alert_arb(info, base_token, arb_token)
+    arguments = [[info, base_token, arb_token] for arb_token in arb_tokens]
+    with ThreadPoolExecutor(max_workers=20) as pool:
+        results = pool.map(lambda p: alert_arb(*p), arguments, timeout=10)
 
     sleep(10)
 
