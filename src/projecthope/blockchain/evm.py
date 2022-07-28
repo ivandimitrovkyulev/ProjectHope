@@ -1,5 +1,7 @@
 import os
 
+from functools import lru_cache
+
 from dotenv import load_dotenv
 from typing import Any
 
@@ -34,20 +36,29 @@ class EvmContract:
         self.w3.eth.set_gas_price_strategy(gas_str)
 
         # Set up various caches
-        self.w3.middleware_onion.add(middleware.time_based_cache_middleware)
         self.w3.middleware_onion.add(middleware.latest_block_based_cache_middleware)
         self.w3.middleware_onion.add(middleware.simple_cache_middleware)
 
-    def eth_gas_price(self) -> int:
+    @lru_cache()
+    def eth_gas_price(self, ttl_hash: int = None) -> int or None:
         """
         Get a quote for Eth gas price for a transaction to get mined.
         Set to 30secs max_wait, 60 sample_size, 98 probability & weighted False.
         Use 'change_gas_strategy' method to implement a different strategy.
+        Pass get_ttl_hash() to cache for a period of time.
         """
+        del ttl_hash  # Only used in @lru_cache() so can be deleted
 
-        gas_price = self.w3.eth.generate_gas_price()
-
-        return gas_price
+        counter = 1
+        while True:
+            try:
+                gas_price = self.w3.eth.generateGasPrice()
+                return gas_price
+            except IndexError:
+                print("Error!!!!!!!!!!!!!!!!")
+                counter += 1
+                if counter > 3:
+                    return None
 
     def change_gas_strategy(self, max_wait: int, sample_size: int = 60,
                             probability: int = 98, weighted: bool = False) -> int:
@@ -83,6 +94,8 @@ class EvmContract:
         :param func_args: List of arguments to pass to function
         :return: Function output
         """
+        # In case function take only one argument
+        func_args = (func_args,)
 
         function_name = str(func_name)
 

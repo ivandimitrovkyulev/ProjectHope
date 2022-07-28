@@ -2,7 +2,7 @@ import json
 import os
 
 import requests
-import requests_cache
+from requests_cache import CachedSession
 
 from datetime import datetime
 from json.decoder import JSONDecodeError
@@ -14,8 +14,11 @@ from typing import (
     Iterator,
 )
 from src.projecthope.blockchain.evm import EvmContract
-from src.projecthope.common.helpers import parse_args
 from src.projecthope.common.message import telegram_send_message
+from src.projecthope.common.helpers import (
+    parse_args,
+    get_ttl_hash,
+)
 from src.projecthope.one_inch.datatypes import (
     Token,
     Swap,
@@ -32,6 +35,12 @@ from src.projecthope.common.variables import (
 
 # Create an EVM contract class
 contract = EvmContract()
+
+# Set up requests session
+session = requests.Session()
+
+# Set up a cached session
+cached_session = CachedSession(cache_name="w3_cache", backend='sqlite', expire_after=720)
 
 
 def max_swap(results: Iterator[Swap]) -> Tuple[Swap, float]:
@@ -62,14 +71,14 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
     :param timeout: Maximum time to wait per GET request
     :return: Dictionary with updated gas_info data
     """
-    gas_price = contract.eth_gas_price()  # Get ETH gas price from Web3
+    # Get ETH gas price from Web3. Result is cached for 1200 secs before querying again
+    gas_price = contract.eth_gas_price(ttl_hash=get_ttl_hash(1200))
     gas_info['gas_price'] = gas_price
 
     api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
     try:
         # Cache only Etherscan API get requests!
-        with requests_cache.enabled('etherscan_cache', backend='sqlite', expire_after=180):
-            response = requests.get(api, timeout=timeout)
+        response = cached_session.get(api, timeout=timeout)
     except ConnectionError as e:
         log_error.warning(f"'ConnectionError' - {e}")
         return gas_info
@@ -102,7 +111,6 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_floa
     :return: Swap dictionary
     """
     api = f"https://api.1inch.io/v4.0/{network_id}/quote"
-    session = requests.Session()
     session.mount("https://", HTTPAdapter(max_retries=max_retries))
 
     from_token_addr = str(from_token[0])

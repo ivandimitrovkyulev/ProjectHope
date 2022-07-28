@@ -1,3 +1,5 @@
+import time
+
 from typing import (
     List,
     Dict,
@@ -61,3 +63,14 @@ def parse_args(data: dict, token_name_a: str, token_name_b: str, amount: float =
         args_ab.append([network_id, from_token, to_token, amount])
 
     return args_ab
+
+
+def get_ttl_hash(seconds: int = 1200) -> int:
+    """
+    Function intended to be used with Python's functools.lru_cache only.
+    Implements a length in which lru_cache will be used before clearing.
+
+    :param seconds: How long to use cache for before clearing it up. Default is 20 minutes
+    :return: Number of seconds
+    """
+    return round(time.time() / seconds)
