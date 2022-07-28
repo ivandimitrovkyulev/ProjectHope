@@ -2,6 +2,7 @@ import json
 import os
 
 import requests
+from requests.exceptions import ReadTimeout
 from requests_cache import CachedSession
 
 from datetime import datetime
@@ -36,10 +37,11 @@ from src.projecthope.common.variables import (
 # Create an EVM contract class
 contract = EvmContract()
 
-# Set up requests session
+# Set up and configure requests session
 session = requests.Session()
+session.mount("https://", HTTPAdapter(max_retries=3))
 
-# Set up a cached session
+# Set up a cached session that expires in 12 mins
 cached_session = CachedSession(cache_name="w3_cache", backend='sqlite', expire_after=720)
 
 
@@ -79,7 +81,7 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
     try:
         # Cache only Etherscan API get requests!
         response = cached_session.get(api, timeout=timeout)
-    except ConnectionError as e:
+    except ConnectionError or ReadTimeout as e:
         log_error.warning(f"'ConnectionError' - {e}")
         return gas_info
 
@@ -97,8 +99,8 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
     return gas_info
 
 
-def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_float: float,
-                max_retries: int = 3, timeout: int = 3) -> dict or None:
+def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
+                amount_float: float, timeout: int = 3) -> dict or None:
     """
     Queries https://app.1inch.io for swap_out amount between 2 tokens on a given network.
 
@@ -106,12 +108,10 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple, amount_floa
     :param from_token: From token (swap in). Tuple format (address, name, decimals)
     :param to_token: To token (swap out). Tuple format (address, name, decimals)
     :param amount_float: Amount to swap in
-    :param max_retries: Maximum number ot GET retries
     :param timeout: Maximum time to wait per GET request
     :return: Swap dictionary
     """
     api = f"https://api.1inch.io/v4.0/{network_id}/quote"
-    session.mount("https://", HTTPAdapter(max_retries=max_retries))
 
     from_token_addr = str(from_token[0])
     from_token_name = from_token[1]
