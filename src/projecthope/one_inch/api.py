@@ -178,11 +178,12 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> Tuple[Swap, Sw
     with ThreadPoolExecutor(max_workers=len(args_ab)) as pool:
         results = pool.map(lambda p: get_swapout(*p), args_ab, timeout=10)
 
-    # Get the maximum swap out
+    # Get the maximum swap out and use only 1 swap amount
     max_swap_ab, max_amount_ab = max_swap(results)
+    ranges = (max_amount_ab, max_amount_ab + 1, max_amount_ab)
 
     # Query networks for Arb->Base swap out
-    args_ba = parse_args(data, arb_token, base_token, max_amount_ab)
+    args_ba = parse_args(data, arb_token, base_token, ranges)
     with ThreadPoolExecutor(max_workers=len(args_ba)) as pool:
         results = pool.map(lambda p: get_swapout(*p), args_ba, timeout=10)
 

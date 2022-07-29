@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from src.projecthope.common.exceptions import exit_handler
 from src.projecthope.one_inch.api import alert_arb
 from src.projecthope.common.variables import time_format
+from src.projecthope.common.helpers import print_start_message
 
 
 if len(sys.argv) != 2:
@@ -29,12 +30,7 @@ timestamp = datetime.now().astimezone().strftime(time_format)
 base_token = "USDC"
 arb_tokens = [token for token in info['arb_tokens']]
 
-
-print(f"{timestamp} - Started screening:")
-for i, arb_token in enumerate(arb_tokens):
-    arb_token_networks = [net for net in info['arb_tokens'][arb_token]['networks']
-                          if net in info['base_tokens'][base_token]['networks']]
-    print(f"{i}. {arb_token} on {arb_token_networks}")
+print_start_message(info, base_token, timestamp)
 
 
 loop_counter = 1

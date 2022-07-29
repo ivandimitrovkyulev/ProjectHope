@@ -29,38 +29,38 @@ def compare_lists(new_list: List[Dict[str, str]], old_list: List[Dict[str, str]]
         return []
 
 
-def parse_args(data: dict, token_name_a: str, token_name_b: str, amount: float = 0) -> List[list]:
+def parse_args(data: dict, base_token: str, arb_token: str, amounts: tuple = ()) -> List[list]:
     """
-    Parses arguments for swap out function.
+    Constructs a list of arguments for the 'get_swapout' function.
 
     :param data: Dictionary containing all token data
-    :param token_name_a: Name of Token A
-    :param token_name_b: Name of Token B
-    :param amount: Amount to swap
+    :param base_token: Name of Base Token
+    :param arb_token: Name of Arb Token
+    :param amounts: Range list of amounts
     :return: Argument list of lists
     """
 
-    if token_name_a in data['base_tokens']:
-        a_networks = data['base_tokens'][token_name_a]['networks']
-        b_networks = data['arb_tokens'][token_name_b]['networks']
-        if amount == 0:
-            amount = data['arb_tokens'][token_name_b]['swap_amount']
+    if base_token not in data['base_tokens']:
+        raise Exception(f"Token {base_token} not in 'base_tokens'")
 
-    else:
-        a_networks = data['arb_tokens'][token_name_a]['networks']
-        b_networks = data['base_tokens'][token_name_b]['networks']
+    base_networks = data['base_tokens'][base_token]['networks']
+    arb_networks = data['arb_tokens'][arb_token]['networks']
+
+    if len(amounts) == 0:
+        amounts = data['arb_tokens'][arb_token]['swap_amount']
 
     args_ab = []
-    for network, data in b_networks.items():
-        network_id = network_names[network]
-        to_token = (data['address'], token_name_b, data['decimals'])
+    for network, data in arb_networks.items():
+        for amount in range(*amounts):
+            network_id = network_names[network]
+            to_token = (data['address'], arb_token, data['decimals'])
 
-        try:
-            from_token = (a_networks[network]['address'], token_name_a, a_networks[network]['decimals'])
-        except KeyError:
-            continue
+            try:
+                from_token = (base_networks[network]['address'], base_token, base_networks[network]['decimals'])
+            except KeyError:
+                continue
 
-        args_ab.append([network_id, from_token, to_token, amount])
+            args_ab.append([network_id, from_token, to_token, amount])
 
     return args_ab
 
@@ -74,3 +74,17 @@ def get_ttl_hash(seconds: int = 1200) -> int:
     :return: Number of seconds
     """
     return round(time.time() / seconds)
+
+
+def print_start_message(info: dict, base_token: str, timestamp: str) -> None:
+
+    arb_tokens = [token for token in info['arb_tokens']]
+
+    print(f"{timestamp} - Started screening the following configurations:")
+    for i, arb_token in enumerate(arb_tokens):
+        arb_token_networks = [net for net in info['arb_tokens'][arb_token]['networks']
+                              if net in info['base_tokens'][base_token]['networks']]
+
+        start, end, step = info['arb_tokens'][arb_token]['swap_amount']
+        print(f"[{i+1}] {base_token} -> {arb_token}, range[{start:,}...{(start+step):,}...{end:,}] "
+              f"on {arb_token_networks}")
