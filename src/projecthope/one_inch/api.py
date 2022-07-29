@@ -4,6 +4,7 @@ import os
 import requests
 from requests.exceptions import ReadTimeout
 from requests_cache import CachedSession
+from urllib3 import Retry
 
 from datetime import datetime
 from json.decoder import JSONDecodeError
@@ -16,6 +17,7 @@ from typing import (
 )
 from src.projecthope.blockchain.evm import EvmContract
 from src.projecthope.common.message import telegram_send_message
+from src.projecthope.common.decorators import func_calls
 from src.projecthope.common.helpers import (
     parse_args,
     get_ttl_hash,
@@ -39,7 +41,10 @@ contract = EvmContract()
 
 # Set up and configure requests session
 session = requests.Session()
-session.mount("https://", HTTPAdapter(max_retries=3))
+retry_strategy = Retry(total=2, status_forcelist=[429, 500, 502, 503, 504])
+adapter = HTTPAdapter(max_retries=retry_strategy)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
 
 # Set up a cached session that expires in 12 mins
 cached_session = CachedSession(cache_name="w3_cache", backend='sqlite', expire_after=720)
@@ -99,8 +104,16 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
     return gas_info
 
 
+@func_calls
+def get_request_1inch(api: str, payload: dict, timeout: int) -> requests.Response:
+    """Function wrapper only to count the number of request calls"""
+    get_response = session.get(api, params=payload, timeout=timeout)
+
+    return get_response
+
+
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
-                amount_float: float, timeout: int = 3, include_fees: bool = True) -> dict or None:
+                amount_float: float, timeout: int = 2, include_fees: bool = True) -> dict or None:
     """
     Queries https://app.1inch.io for swap_out amount between 2 tokens on a given network.
 
@@ -130,7 +143,8 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                "toTokenAddress": to_token_addr,
                "amount": str(amount)}
     try:
-        response = session.get(api, params=payload, timeout=timeout)
+        # requests.get passed throught get_request_1inch func in order to count GET calls
+        response = get_request_1inch(api, payload, timeout)
     except ConnectionError:
         log_error.warning(f"'ConnectionError': Unable to fetch amount for "
                           f"{network_name} {from_token_name} -> {to_token_name}")
@@ -144,7 +158,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
 
     if response.status_code != 200:
         log_error.warning(f"'ResponseError' {response.status_code}, {data['error']}, {data['description']} - "
-                          f"{network_name} {from_token_name} -> {to_token_name}")
+                          f"{network_name}, {amount_float} {from_token_name} -> {to_token_name}")
         return None
 
     swap_out = float(data['toTokenAmount'])
@@ -235,11 +249,9 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
                        f"-->Arbitrage: {arbitrage:,} {base_token}"
 
         if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
-            fee1 = swap_ab.gas_info.get('usdc_cost')
-            fee2 = swap_ba.gas_info.get('usdc_cost')
-            if fee1:
+            if fee1 := swap_ab.gas_info.get('usdc_cost'):
                 fee_msg = f", swap+bridge fees ~${fee1:,.0f}"
-            elif fee2:
+            elif fee2 := swap_ba.gas_info.get('usdc_cost'):
                 fee_msg = f", swap+bridge fees ~${fee2:,.0f}"
             else:
                 fee_msg = f", swap+bridge fees n/a"

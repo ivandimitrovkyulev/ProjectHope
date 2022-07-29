@@ -11,9 +11,12 @@ from time import (
 from concurrent.futures import ThreadPoolExecutor
 
 from src.projecthope.common.exceptions import exit_handler
-from src.projecthope.one_inch.api import alert_arb
 from src.projecthope.common.variables import time_format
 from src.projecthope.common.helpers import print_start_message
+from src.projecthope.one_inch.api import (
+    alert_arb,
+    get_request_1inch,
+)
 
 
 if len(sys.argv) != 2:
@@ -34,6 +37,7 @@ print_start_message(info, base_token, timestamp)
 
 
 loop_counter = 1
+total_calls = 0
 while True:
     start = perf_counter()
 
@@ -43,5 +47,7 @@ while True:
 
     sleep(10)
 
-    print(f"Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs.")
+    print(f"Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs. "
+          f"1inch API calls: {abs(total_calls - get_request_1inch.calls)}")
+    total_calls = get_request_1inch.calls
     loop_counter += 1

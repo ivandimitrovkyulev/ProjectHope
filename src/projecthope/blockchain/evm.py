@@ -31,7 +31,7 @@ class EvmContract:
 
         self.w3 = Web3(Web3.HTTPProvider(self.infura_url))
 
-        #Construct and set gas strategy
+        # Construct and set gas strategy
         gas_str = construct_time_based_gas_price_strategy(max_wait_seconds=30, sample_size=1,
                                                           probability=98, weighted=False)
         self.w3.eth.set_gas_price_strategy(gas_str)
@@ -48,7 +48,6 @@ class EvmContract:
         Use 'change_gas_strategy' method to implement a different strategy.
         Pass get_ttl_hash() to cache for a period of time.
         """
-        del ttl_hash  # Only used in @lru_cache() so can be deleted
 
         counter = 1
         while True:
