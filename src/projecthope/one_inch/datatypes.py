@@ -27,4 +27,4 @@ class Swap:
     def __repr__(self):
         return f"Swap {self.from_token.amount:,} {self.from_token.name} --> " \
                f"{self.to_token.amount:,} {self.to_token.name} on " \
-               f"{self.chain}, id: {self.id} costs {self.gas}"
+               f"{self.chain}, id: {self.id} costs {self.gas_info}"

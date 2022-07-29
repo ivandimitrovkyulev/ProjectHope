@@ -11,6 +11,7 @@ from web3 import (
     Web3,
     middleware,
 )
+from src.projecthope.common.logger import log_error
 
 
 class EvmContract:
@@ -55,7 +56,7 @@ class EvmContract:
                 gas_price = self.w3.eth.generateGasPrice()
                 return gas_price
             except IndexError:
-                print("Error!!!!!!!!!!!!!!!!")
+                log_error.warning(f"Could not query gas price from Web3. Attempt: {counter}")
                 counter += 1
                 if counter > 3:
                     return None

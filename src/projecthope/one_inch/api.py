@@ -100,7 +100,7 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
 
 
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
-                amount_float: float, timeout: int = 3) -> dict or None:
+                amount_float: float, timeout: int = 3, include_fees: bool = True) -> dict or None:
     """
     Queries https://app.1inch.io for swap_out amount between 2 tokens on a given network.
 
@@ -109,6 +109,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     :param to_token: To token (swap out). Tuple format (address, name, decimals)
     :param amount_float: Amount to swap in
     :param timeout: Maximum time to wait per GET request
+    :param include_fees: Include Eth fees?
     :return: Swap dictionary
     """
     api = f"https://api.1inch.io/v4.0/{network_id}/quote"
@@ -153,7 +154,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     gas_info = {"gas_amount": gas_amount}
 
     # Calculate fees on Ethereum only and add to gas_info dict
-    if int(network_id) == 1:
+    if include_fees and int(network_id) == 1:
         get_eth_fees(gas_info, gas_amount, timeout=timeout)
 
     from_token = Token(from_token_name, from_token_decimal, amount_float)
