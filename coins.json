@@ -8,7 +8,8 @@
                 "Optimism":  {"address": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607", "decimals": 6},
                 "Arbitrum":  {"address": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", "decimals": 6},
                 "Avalanche": {"address": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664", "decimals": 6},
-                "Fantom":    {"address": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75", "decimals": 6}
+                "Fantom":    {"address": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75", "decimals": 6},
+                "Gnosis":    {"address": "0xddafbb505ad214d7b80b1f830fccc89b60fb7a83", "decimals": 6}
             }
         }
     },
@@ -35,6 +36,13 @@
                 "Fantom":    {"address": "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590", "decimals": 18}
             },
             "swap_amount": [4000, 8001, 2000], "min_arb": 35
+        },
+        "GNO": {
+            "networks": {
+                "Ethereum":  {"address": "0x6810e776880C02933D47DB1b9fc05908e5386b96", "decimals": 18},
+                "Gnosis":    {"address": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb", "decimals": 18}
+            },
+            "swap_amount": [10000, 10001, 10000], "min_arb": 35
         }
     }
 

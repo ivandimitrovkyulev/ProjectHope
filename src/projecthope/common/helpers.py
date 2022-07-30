@@ -82,9 +82,12 @@ def print_start_message(info: dict, base_token: str, timestamp: str) -> None:
 
     print(f"{timestamp} - Started screening the following configurations:")
     for i, arb_token in enumerate(arb_tokens):
+
         arb_token_networks = [net for net in info['arb_tokens'][arb_token]['networks']
                               if net in info['base_tokens'][base_token]['networks']]
 
-        start, end, step = info['arb_tokens'][arb_token]['swap_amount']
-        print(f"[{i+1}] {base_token} -> {arb_token}, range[{start:,}...{(start+step):,}...{end:,}] "
+        ranges = info['arb_tokens'][arb_token]['swap_amount']
+        swap_ranges = [f"{swap:,}" for swap in range(*ranges)]
+
+        print(f"[{i+1}] {base_token} -> {arb_token}, amounts{swap_ranges} "
               f"on {arb_token_networks}")

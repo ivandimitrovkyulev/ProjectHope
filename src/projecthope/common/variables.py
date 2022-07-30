@@ -25,6 +25,7 @@ network_ids = {
     "42161": "Arbitrum",
     "43114": "Avalanche",
     "250": "Fantom",
+    "100": "Gnosis",
 }
 
 network_names = {
@@ -35,4 +36,5 @@ network_names = {
     "Arbitrum": "42161",
     "Avalanche": "43114",
     "Fantom": "250",
+    "Gnosis": "100",
 }
