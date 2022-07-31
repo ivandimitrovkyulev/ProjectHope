@@ -47,7 +47,8 @@ while True:
 
     sleep(10)
 
-    print(f"Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs. "
+    timestamp = datetime.now().astimezone().strftime(time_format)
+    print(f"{timestamp}: Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs. "
           f"1inch API calls: {abs(total_calls - get_request_1inch.calls)}")
     total_calls = get_request_1inch.calls
     loop_counter += 1
