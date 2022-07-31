@@ -1,4 +1,6 @@
 # For screening
 var="$(cat coins.json)"
 docker run --name="projecthope" -it "eu.gcr.io/hip-orbit-347017/projecthope" python3 main.py "$var"
+
+# python3 container_check.py projecthope
 # docker cp projecthope:/projecthope/logs/error.log .
