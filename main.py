@@ -42,7 +42,7 @@ while True:
     start = perf_counter()
 
     arguments = [[info, base_token, arb_token] for arb_token in arb_tokens]
-    with ThreadPoolExecutor(max_workers=20) as pool:
+    with ThreadPoolExecutor(max_workers=len(arguments)) as pool:
         results = pool.map(lambda p: alert_arb(*p), arguments, timeout=10)
 
     sleep(10)
