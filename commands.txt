@@ -1,6 +1,11 @@
 # For screening
 var="$(cat coins.json)"
-docker run --name="projecthope" -it "eu.gcr.io/hip-orbit-347017/projecthope" python3 main.py "$var"
+docker run --name="projecthope" -it -d "eu.gcr.io/hip-orbit-347017/projecthope" python3 main.py "$var"
+
+## To run docker container checker
+docker cp projecthope:/projecthope/.env .
+chmod go-rw .env
+python3 container_check.py "projecthope"
 
 # python3 container_check.py projecthope
 # docker cp projecthope:/projecthope/logs/error.log .
