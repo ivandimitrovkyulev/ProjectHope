@@ -8,6 +8,7 @@ import time
 import datetime
 import requests
 from re import compile
+from atexit import register
 
 
 def telegram_send_message(message_text: str) -> requests.Response or None:
@@ -53,16 +54,17 @@ def telegram_send_message(message_text: str) -> requests.Response or None:
 if len(sys.argv) != 2:
     sys.exit(f"Usage: python3 {os.path.basename(__file__)} <container_name>\n")
 
-wait_time = 15 * 60
-time.sleep(300)
-
 current_dir = os.getcwd()
 time_format = "%Y-%m-%d %H:%M:%S, %Z"
 time_format_regex = compile("\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
 program_name = os.path.abspath(os.path.basename(__file__))
 program_start_time = datetime.datetime.now()
-container_name = sys.argv[-1]
 
+container_name = sys.argv[-1]
+register(telegram_send_message, f"container_check.py for {program_name}/{container_name} has stopped!")
+
+wait_time = 15 * 60
+time.sleep(300)
 
 while True:
     # Get timestamp of last execution loop
