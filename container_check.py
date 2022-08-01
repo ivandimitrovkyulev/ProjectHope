@@ -57,10 +57,10 @@ wait_time = 15 * 60
 time.sleep(300)
 
 current_dir = os.getcwd()
-CHAT_ID = "-772766575"
 time_format = "%Y-%m-%d %H:%M:%S, %Z"
 time_format_regex = compile("\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
-
+program_name = os.path.abspath(os.path.basename(__file__))
+program_start_time = datetime.datetime.now()
 container_name = sys.argv[-1]
 
 
@@ -87,5 +87,10 @@ while True:
         telegram_send_message(message)
 
         break
+
+    # Alert every 12hours if the script is still running
+    if now_time - program_start_time > datetime.timedelta(hours=12):
+        telegram_send_message(f"{program_name} is still running.")
+        program_start_time = datetime.datetime.now()
 
     time.sleep(wait_time)
