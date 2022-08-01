@@ -12,6 +12,8 @@ TOKEN = os.getenv("TOKEN")
 CHAT_ID_ALERTS = os.getenv("CHAT_ID_ALERTS")
 CHAT_ID_ALERTS_FILTER = os.getenv("CHAT_ID_ALERTS_FILTER")
 CHAT_ID_DEBUG = os.getenv("CHAT_ID_DEBUG")
+BINANCE_KEY = os.getenv("BINANCE_KEY")
+BINANCE_SECRET = os.getenv("BINANCE_SECRET")
 
 
 time_format = "%Y-%m-%d %H:%M:%S, %Z"

@@ -1,16 +1,14 @@
-from urllib import response
 from binance.spot import Spot
-
 from binance.spot.bswap import bswap_request_quote
+from src.projecthope.common.variables import (
+    BINANCE_KEY,
+    BINANCE_SECRET,
+)
 
-client = Spot()
 
-# api key/secret are required for user data endpoints
-client = Spot(key='xxxx',
-              secret='xxx')
+client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
 
 limit = 1000  # limit of bid/ask pairs from origin
-
 trading_pair = 'ETHUSDT'
 
 
@@ -52,7 +50,7 @@ def stables_to_tokens(limit, token_pair, stables_amount):
     return bought_after_fees
 
 
-# print(stables_to_tokens(limit, trading_pair, 500000))
+print(stables_to_tokens(limit, trading_pair, 500000))
 
 
 def tokens_to_stables(limit, token_pair, coin_amount):

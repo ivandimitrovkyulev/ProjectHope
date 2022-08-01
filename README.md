@@ -30,12 +30,12 @@ poetry install
 Create a Telegram Bot and save the following variables in a **.env** file in **./ProjectHope**:
 ```
 TOKEN=<telegram-token-for-your-bot>
-
 CHAT_ID_ALERTS=<id-of-telegram-chat-for-alerts>
-
 CHAT_ID_DEBUG=<id-of-telegram-chat-for-debugging>
-
 PROJECT_ID=<node-provider-id>
+ETHERSCAN_API_KEY=<etherscan-api-key>
+BINANCE_KEY=<binance-api-key>
+BINANCE_SECRET=<binance-secret-key>
 ```
 <br/>
 
