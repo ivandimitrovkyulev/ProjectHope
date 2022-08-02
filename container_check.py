@@ -11,6 +11,10 @@ from re import compile
 from atexit import register
 
 
+if len(sys.argv) != 2:
+    sys.exit(f"Usage: python3 {os.path.basename(__file__)} <container_name>\n")
+
+
 def telegram_send_message(message_text: str) -> requests.Response or None:
     """Sends a Telegram message to a specified chat."""
     telegram_token: str = ""
@@ -51,20 +55,22 @@ def telegram_send_message(message_text: str) -> requests.Response or None:
         return None
 
 
-if len(sys.argv) != 2:
-    sys.exit(f"Usage: python3 {os.path.basename(__file__)} <container_name>\n")
-
 current_dir = os.getcwd()
 time_format = "%Y-%m-%d %H:%M:%S, %Z"
-time_format_regex = compile("\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
+time_format_regex = compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
 program_name = os.path.abspath(os.path.basename(__file__))
 program_start_time = datetime.datetime.now()
 
 container_name = sys.argv[-1]
-register(telegram_send_message, f"container_check.py for {program_name}/{container_name} has stopped!")
+register(telegram_send_message, f"⚠️ <b>{container_name.upper()}</b>: {program_name} stopped!")
 
-wait_time = 15 * 60
-time.sleep(300)
+wait_time = 15 * 60  # 15 mins (15 * 60 secs) sleep time in each loop
+max_time_diff = 15 * 60  # 15 mins max difference(in secs) between current and script's last timestamp
+update_time = 12  # 12 hour check 'OK' message to Telegram to notify container_check is still running
+
+# Sleep before starting the script - 15 mins
+time.sleep(15 * 60)
+
 
 while True:
     # Get timestamp of last execution loop
@@ -82,17 +88,21 @@ while True:
     # Calculate time difference in seconds
     time_diff = (now_time - script_time).seconds
 
-    if time_diff > wait_time:
-        message = f"WARNING - {now_time}\n" \
-                  f"Container: {container_name}, path: {current_dir} has stopped!"
-        # Send Telegram message in Debug Chat
+    # Alert if container has stopped or is lagging behind
+    if time_diff > max_time_diff:
+        timestamp = datetime.datetime.now().astimezone().strftime(time_format)
+        message = f"<b>⚠️ {container_name.upper()}</b> - {timestamp}\n" \
+                  f"<b>{program_name}</b> stopped!\n"
+
+        # Send Telegram message in Debug Chat and Break
         telegram_send_message(message)
 
         break
 
     # Alert every 12hours if the script is still running
-    if now_time - program_start_time > datetime.timedelta(hours=12):
-        telegram_send_message(f"{program_name} is still running.")
+    if now_time - program_start_time > datetime.timedelta(hours=update_time):
+
+        telegram_send_message(f"✅ {container_name.upper()} is still running. Update period {update_time} hours.")
         program_start_time = datetime.datetime.now()
 
     time.sleep(wait_time)
