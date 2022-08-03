@@ -1,5 +1,9 @@
+from pprint import pprint
+from functools import lru_cache
+
 from binance.spot import Spot
-from binance.spot.bswap import bswap_request_quote
+
+from src.projecthope.common.helpers import get_ttl_hash
 from src.projecthope.common.variables import (
     BINANCE_KEY,
     BINANCE_SECRET,
@@ -8,58 +12,63 @@ from src.projecthope.common.variables import (
 
 client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
 
-limit = 1000  # limit of bid/ask pairs from origin
-trading_pair = 'ETHUSDT'
 
+def stables_to_tokens(token_pair: str, stables_amount: float, book_limit: int = 100) -> float:
+    """
+    Calculates received amount of 'B' from pair 'AB' based on binance's order book asks.
 
-def stables_to_tokens(limit, token_pair, stables_amount):
-    total_bought = 0
-    order_book = client.depth(token_pair, limit=limit)
+    :param token_pair: Token pair to trade, eg. 'ETHUSDT'
+    :param stables_amount: Amount of stablescoins (B) to swap out
+    :param book_limit: Number of asks to check againts in the order book
+    :return: Amount of tokens bought (swap in)
+    """
+    order_book = client.depth(token_pair, limit=book_limit)
 
-    for item in order_book['asks']:  # asks are when they want to sell sth -> they are ASKING for the PRICE
+    # Deduct binance 0.1% fee before trading
+    fee = stables_amount * (0.1 / 100.0)
+    stables_amount -= fee
+
+    tokens_bought = 0
+    # asks are when they want to sell sth -> they are ASKING for the PRICE
+    for i, item in enumerate(order_book['asks']):
         # getting the amounts at price closest to the origin
         price = float(item[0])
         quantity = float(item[1])
-        print(f'p*q {price * quantity}')
+        cost = price * quantity
 
-        # check if our stables can fill the closest price level before moving to the next level
-        # if ethereum is 1500 and there is 1 ethereum sitting at 1500
-        # and a second ethereum sitting at 1550, we buy one at 1500, bump the price to 1550, if we buy more its at 1550
-
-        # we check if we can clear the level with our size, if we can we do so and move to the next price level,
-        if stables_amount >= price * quantity:
-            stables_amount -= price * quantity
-            total_bought += quantity
+        # If stables_amount less than ask total cost
+        if stables_amount >= cost:
+            stables_amount -= cost
+            tokens_bought += quantity
 
         # otherwise we check how much of the current level we are filling
         else:
             last_quantity_bought = float(stables_amount / price)
-            total_bought += last_quantity_bought
+            tokens_bought += last_quantity_bought
             stables_amount -= price * last_quantity_bought
-            print('===========================')
-            print(f'last price {price}')
-            print(f'last quantity bought {last_quantity_bought}')
+
+            # No more stables left to trade
             break
-    print(f'bought so far {total_bought}')
-    print(f'usdt remaining {stables_amount}')
 
-    bought_after_fees = total_bought * (1 - 0.001)
-    print(stables_amount == 0)
-    print(f'bought after fees {bought_after_fees}')
-
-    return bought_after_fees
+    return tokens_bought
 
 
-print(stables_to_tokens(limit, trading_pair, 500000))
+def tokens_to_stables(token_pair: str, tokens_amount: float, book_limit: int = 100) -> float:
+    """
+    Calculates received amount of 'A' from pair 'AB' based on binance's order book asks.
 
-
-def tokens_to_stables(limit, token_pair, coin_amount):
-    coins_left_to_sell = coin_amount
+    :param token_pair: Token pair to trade, eg. 'ETHUSDT'
+    :param tokens_amount: Amount of tokens (A) to swap out
+    :param book_limit: Number of asks to check againts in the order book
+    :return: Amount of tokens bought (swap in)
+    """
+    coins_left_to_sell = tokens_amount
     total_coins_sold = 0
     total_revenue = 0
-    order_book = client.depth(token_pair, limit=limit)
+    order_book = client.depth(token_pair, limit=book_limit)
 
-    for item in order_book['bids']:  # bids are when they want to BUY sth -> they are BIDDING at the PRICE
+    # bids are when they want to BUY sth -> they are BIDDING at the PRICE
+    for item in order_book['bids']:
 
         price = float(item[0])
         quantity = float(item[1])
@@ -72,7 +81,7 @@ def tokens_to_stables(limit, token_pair, coin_amount):
         else:
             last_quantity_sold_to_stalbes = coins_left_to_sell * price
             total_coins_sold += coins_left_to_sell
-            print(total_coins_sold == coin_amount)
+            print(total_coins_sold == tokens_amount)
             total_revenue += last_quantity_sold_to_stalbes
             break
 
@@ -80,4 +89,5 @@ def tokens_to_stables(limit, token_pair, coin_amount):
 
     return stables_after_fees
 
-# print(tokens_to_stables(limit, trading_pair, 5))
+
+print(tokens_to_stables("ETHUSDT", 500))
