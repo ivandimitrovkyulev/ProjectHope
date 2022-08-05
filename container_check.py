@@ -102,7 +102,7 @@ while True:
     # Alert every 12hours if the script is still running
     if now_time - program_start_time > datetime.timedelta(hours=update_time):
 
-        telegram_send_message(f"✅ {container_name.upper()} is still running. Update period {update_time} hours.")
+        telegram_send_message(f"✅ {container_name.upper()} is running. Update: {update_time} hours.")
         program_start_time = datetime.datetime.now()
 
     time.sleep(wait_time)

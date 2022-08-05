@@ -1,6 +1,13 @@
 from binance.spot import Spot
+from binance.error import ClientError
+
+from typing import (
+    Tuple,
+    List,
+)
 
 from src.projecthope.binance.datatypes import BinanceSwap
+from src.projecthope.common.logger import log_error
 from src.projecthope.common.variables import (
     BINANCE_KEY,
     BINANCE_SECRET,
@@ -11,85 +18,113 @@ from src.projecthope.common.variables import (
 client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
 
 
-def stables_to_tokens(token_pair: str, stables_amount: float, book_limit: int = 100) -> BinanceSwap:
+def trade_b_for_a(token_pair: Tuple[str, str], b_amounts: tuple,
+                  book_limit: int = 100) -> List[BinanceSwap] or None:
     """
-    Calculates received amount of 'B' from pair 'AB' based on binance's order book asks.
+    Given pair 'AB', by selling amount 'B' calculate the received amount of 'A'
+    Based on Binance's order books asks.
 
-    :param token_pair: Token pair to trade, eg. 'ETHUSDT'
-    :param stables_amount: Amount of stablescoins (B) to swap out
-    :param book_limit: Number of asks to check againts in the order book
-    :return: Amount of tokens bought (swap in)
+    :param token_pair: Token pair to trade, eg. ('ETH', 'USDT'), order matters!
+    :param b_amounts: Amount range of token 'B' to swap in
+    :param book_limit: Number of asks to check against in the order book
+    :return: BinanceSwap dataclass: (swap_in, swap_out, fee)
     """
-    order_book = client.depth(symbol=token_pair, limit=book_limit)
+    token_a_name = token_pair[0].upper()
+    token_b_name = token_pair[1].upper()
+    pair = token_a_name + token_b_name
+    try:
+        order_book = client.depth(symbol=pair, limit=book_limit)
+    except ClientError:
+        log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {token_pair}, amounts: {b_amounts}")
+        return None
 
-    # Deduct binance 0.1% fee before trading
-    fee = stables_amount * (0.1 / 100.0)
-    stables_sold = stables_amount
-    stables_amount -= fee
+    all_swaps = []
+    for b_amount in range(*b_amounts):
 
-    tokens_bought = 0
-    # asks are when they want to sell sth -> they are ASKING for the PRICE
-    for item in order_book['asks']:
-        # getting the amounts at price closest to the origin
-        price = float(item[0])
-        quantity = float(item[1])
-        cost = price * quantity
+        # Deduct binance 0.1% fee before trading
+        fee = b_amount * (0.1 / 100.0)
+        b_sold = b_amount
+        b_amount -= fee
 
-        # If stables_amount less than ask total cost
-        if stables_amount >= cost:
-            stables_amount -= cost
-            tokens_bought += quantity
+        a_bought = 0
+        # asks are when they want to sell sth -> they are ASKING for the PRICE
+        for item in order_book['asks']:
+            # getting the amounts at price closest to the origin
+            price = float(item[0])
+            quantity = float(item[1])
+            cost = price * quantity
 
-        # otherwise we check how much of the current level we are filling
-        else:
-            last_quantity_bought = float(stables_amount / price)
-            tokens_bought += last_quantity_bought
-            stables_amount -= price * last_quantity_bought
+            # If stables_amount less than ask total cost
+            if b_amount >= cost:
+                b_amount -= cost
+                a_bought += quantity
 
-            # No more stables left to trade
-            break
+            # otherwise we check how much of the current level we are filling
+            else:
+                last_quantity_bought = float(b_amount / price)
+                a_bought += last_quantity_bought
+                b_amount -= price * last_quantity_bought
 
-    swap = BinanceSwap(stables_sold, tokens_bought, fee)
+                # No more stables left to trade
+                break
 
-    return swap
+        swap = BinanceSwap(token_b_name, b_sold, token_a_name, a_bought, (token_b_name, fee))
+        # Append swap to list of all swaps
+        all_swaps.append(swap)
+
+    return all_swaps
 
 
-def tokens_to_stables(token_pair: str, tokens_amount: float, book_limit: int = 100) -> BinanceSwap:
+def trade_a_for_b(token_pair: Tuple[str, str], a_amounts: tuple,
+                  book_limit: int = 100) -> List[BinanceSwap] or None:
     """
-    Calculates received amount of 'A' from pair 'AB' based on binance's order book asks.
+    Given pair 'AB', by selling amount 'A' calculate the received amount of 'B'
+    Based on Binance's order books asks.
 
-    :param token_pair: Token pair to trade, eg. 'ETHUSDT'
-    :param tokens_amount: Amount of tokens (A) to swap out
-    :param book_limit: Number of asks to check againts in the order book
-    :return: Amount of tokens bought (swap in)
+    :param token_pair: Token pair to trade, eg. 'ETHUSDT', order matters!
+    :param a_amounts: Amount range of token 'A' to swap in
+    :param book_limit: Number of asks to check against in the order book
+    :return: BinanceSwap dataclass: (swap_in, swap_out, fee)
     """
-    order_book = client.depth(symbol=token_pair, limit=book_limit)
+    token_a_name = token_pair[0].upper()
+    token_b_name = token_pair[1].upper()
+    pair = token_a_name + token_b_name
+    try:
+        order_book = client.depth(symbol=pair, limit=book_limit)
+    except ClientError:
+        log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {token_pair}, amount: {a_amounts}")
+        return None
 
-    # Deduct binance 0.1% fee before trading
-    fee = tokens_amount * (0.1 / 100.0)
-    total_tokens_sold = tokens_amount
-    tokens_amount -= fee
+    all_swaps = []
+    for a_amount in range(*a_amounts):
 
-    stables_bought = 0
-    tokens_sold = 0
-    # bids are when they want to BUY sth -> they are BIDDING at the PRICE
-    for item in order_book['bids']:
+        # Deduct binance 0.1% fee before trading
+        fee = a_amount * (0.1 / 100.0)
+        total_a_sold = a_amount
+        a_amount -= fee
 
-        price = float(item[0])
-        quantity = float(item[1])
-        cost = price * quantity
+        b_bought = 0
+        a_sold = 0
+        # bids are when they want to BUY sth -> they are BIDDING at the PRICE
+        for item in order_book['bids']:
 
-        if tokens_amount >= quantity:
-            tokens_amount -= quantity
-            tokens_sold += quantity
-            stables_bought += cost
-        else:
-            tokens_sold += tokens_amount
-            stables_bought += tokens_amount * price
+            price = float(item[0])
+            quantity = float(item[1])
+            cost = price * quantity
 
-            # No more tokens left to trade
-            break
+            if a_amount >= quantity:
+                a_amount -= quantity
+                a_sold += quantity
+                b_bought += cost
+            else:
+                a_sold += a_amount
+                b_bought += a_amount * price
 
-    swap = BinanceSwap(total_tokens_sold, stables_bought, fee)
+                # No more tokens left to trade
+                break
 
-    return swap
+        swap = BinanceSwap(token_a_name, total_a_sold, token_b_name, b_bought, (token_a_name, fee))
+        # Append swap to list of all swaps
+        all_swaps.append(swap)
+
+    return all_swaps

@@ -11,6 +11,7 @@ python-dotenv = "^0.20.0"
 web3 = "^5.30.0"
 requests-cache = "^0.9.5"
 binance-connector = "^1.15.0"
+tabulate = "^0.8.10"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

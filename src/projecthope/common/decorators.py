@@ -18,7 +18,7 @@ def timer(func):
     return wrapper
 
 
-def func_calls(func):
+def count_func_calls(func):
     """Counts the number of function calls."""
 
     @functools.wraps(func)

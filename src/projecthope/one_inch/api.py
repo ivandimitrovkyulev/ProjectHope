@@ -1,39 +1,23 @@
-import json
 import os
-
+import json
 import requests
+
 from requests.exceptions import ReadTimeout
 from requests_cache import CachedSession
 from urllib3 import Retry
 
-from datetime import datetime
 from json.decoder import JSONDecodeError
 from requests.adapters import HTTPAdapter
-from concurrent.futures import ThreadPoolExecutor
 
-from typing import (
-    Tuple,
-    Iterator,
-)
 from src.projecthope.blockchain.evm import EvmContract
-from src.projecthope.common.message import telegram_send_message
-from src.projecthope.common.decorators import func_calls
-from src.projecthope.common.helpers import (
-    parse_args,
-    get_ttl_hash,
-)
+from src.projecthope.common.decorators import count_func_calls
+from src.projecthope.common.helpers import get_ttl_hash
 from src.projecthope.one_inch.datatypes import (
     Token,
     Swap,
 )
-from src.projecthope.common.logger import (
-    log_arbitrage,
-    log_error,
-)
-from src.projecthope.common.variables import (
-    time_format,
-    network_ids,
-)
+from src.projecthope.common.logger import log_error
+from src.projecthope.common.variables import network_ids
 
 
 # Create an EVM contract class
@@ -46,25 +30,8 @@ adapter = HTTPAdapter(max_retries=retry_strategy)
 session.mount("https://", adapter)
 session.mount("http://", adapter)
 
-# Set up a cached session that expires in 12 mins
+# Set up a cached session that expires in 12 mins. Used for getting ETH fees only
 cached_session = CachedSession(cache_name="w3_cache", backend='sqlite', expire_after=720)
-
-
-def max_swap(results: Iterator[Swap]) -> Tuple[Swap, float]:
-    """
-    Analyses a list of swaps and returns the one with maximum amount.
-
-    :param results: Generator object containing swaps
-    :return: Tuple (dictionary, max_amount)
-    """
-
-    # Create dict with key-swap and value-all_data
-    swaps = {swap.to_token.amount: swap for swap in results if swap}
-
-    max_amount = max(swaps)
-    swap = swaps[max_amount]
-
-    return swap, max_amount
 
 
 def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005510, timeout: int = 3) -> dict:
@@ -104,14 +71,7 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
     return gas_info
 
 
-@func_calls
-def get_request_1inch(api: str, payload: dict, timeout: int) -> requests.Response:
-    """Function wrapper only to count the number of request calls"""
-    get_response = session.get(api, params=payload, timeout=timeout)
-
-    return get_response
-
-
+@count_func_calls
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                 amount_float: float, timeout: int = 2, include_fees: bool = True) -> dict or None:
     """
@@ -123,7 +83,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     :param amount_float: Amount to swap in
     :param timeout: Maximum time to wait per GET request
     :param include_fees: Include Eth fees?
-    :return: Swap dictionary
+    :return: Swap dataclass: (network_name, network_id, gas_info, from_token, to_token)
     """
     api = f"https://api.1inch.io/v4.0/{network_id}/quote"
 
@@ -144,7 +104,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                "amount": str(amount)}
     try:
         # requests.get passed throught get_request_1inch func in order to count GET calls
-        response = get_request_1inch(api, payload, timeout)
+        response = session.get(api, params=payload, timeout=timeout)
     except ConnectionError:
         log_error.warning(f"'ConnectionError': Unable to fetch amount for "
                           f"{network_name} {from_token_name} -> {to_token_name}")
@@ -177,89 +137,3 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     swap = Swap(network_name, network_id, gas_info, from_token, to_token)
 
     return swap
-
-
-def compare_swaps(data: dict, base_token: str, arb_token: str) -> Tuple[Swap, Swap]:
-    """
-    Compares 1inch supported blockchains for arbitrage between 2 tokens.
-
-    :param data: Input dictionary data
-    :param base_token: Name of Base token being swapped in
-    :param arb_token: Name of token being Arbitraged
-    :return: Dictionary of Swap_ab & Swap_ba data
-    """
-    # Query networks for Base->Arb swap out
-    args_ab = parse_args(data, base_token, arb_token)
-    with ThreadPoolExecutor(max_workers=len(args_ab)) as pool:
-        results = pool.map(lambda p: get_swapout(*p), args_ab, timeout=10)
-
-    # Get the maximum swap out and use only 1 swap amount
-    max_swap_ab, max_amount_ab = max_swap(results)
-    ranges = (max_amount_ab, max_amount_ab + 1, max_amount_ab)
-
-    # Query networks for Arb->Base swap out
-    args_ba = parse_args(data, arb_token, base_token, ranges)
-    with ThreadPoolExecutor(max_workers=len(args_ba)) as pool:
-        results = pool.map(lambda p: get_swapout(*p), args_ba, timeout=10)
-
-    # Get the maximum swap out
-    max_swap_ba, _ = max_swap(results)
-
-    return max_swap_ab, max_swap_ba
-
-
-def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
-    """
-    Alerts via Telegram for arbitrage between 2 tokens.
-
-    :param data: Input dictionary data
-    :param base_token: Name of Base token being swapped in
-    :param arb_token: Name of token being Arbitraged
-    """
-    # Get arbitrage data
-    swap_ab, swap_ba = compare_swaps(data, base_token, arb_token)
-
-    min_arb = data['arb_tokens'][arb_token]['min_arb']
-
-    base_round = int(swap_ab.from_token.decimals // 4)
-    arb_round = int(swap_ab.to_token.decimals // 4)
-
-    base_swap_in = round(swap_ab.from_token.amount, base_round)
-    arb_swap_out = round(swap_ab.to_token.amount, arb_round)
-    base_swap_out = round(swap_ba.to_token.amount, base_round)
-    arb_swap_in = round(swap_ba.from_token.amount, arb_round)
-
-    chain1 = swap_ab.chain
-    chain2 = swap_ba.chain
-
-    arbitrage = base_swap_out - base_swap_in
-    arbitrage = round(arbitrage, base_round)
-
-    if arbitrage >= min_arb:
-        timestamp = datetime.now().astimezone().strftime(time_format)
-        telegram_msg = f"{timestamp}\n" \
-                       f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
-                       f"Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}</a>\n" \
-                       f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
-                       f"Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}</a>\n" \
-                       f"-->Arbitrage: {arbitrage:,} {base_token}"
-
-        terminal_msg = f"1) {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}\n" \
-                       f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}\n" \
-                       f"-->Arbitrage: {arbitrage:,} {base_token}"
-
-        if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
-            if fee1 := swap_ab.gas_info.get('usdc_cost'):
-                fee_msg = f", swap+bridge fees ~${fee1:,.0f}"
-            elif fee2 := swap_ba.gas_info.get('usdc_cost'):
-                fee_msg = f", swap+bridge fees ~${fee2:,.0f}"
-            else:
-                fee_msg = f", swap+bridge fees n/a"
-
-            telegram_msg += fee_msg
-            terminal_msg += fee_msg
-
-        # Send arbitrage to ALL alerts channel and log
-        telegram_send_message(telegram_msg)
-        log_arbitrage.info(terminal_msg)
-        print(f"{terminal_msg}\n")

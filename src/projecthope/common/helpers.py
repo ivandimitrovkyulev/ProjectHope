@@ -3,6 +3,7 @@ import time
 from typing import (
     List,
     Dict,
+    Tuple,
 )
 from src.projecthope.common.variables import network_names
 
@@ -29,40 +30,58 @@ def compare_lists(new_list: List[Dict[str, str]], old_list: List[Dict[str, str]]
         return []
 
 
-def parse_args(data: dict, base_token: str, arb_token: str, amounts: tuple = ()) -> List[list]:
+def parse_args_1inch(data: dict, a_token: str, b_token: str,
+                     amounts: float = 0) -> Tuple[List[list], list]:
     """
-    Constructs a list of arguments for the 'get_swapout' function.
+    Constructs a list of arguments for the 1inch 'get_swapout' function.
 
     :param data: Dictionary containing all token data
-    :param base_token: Name of Base Token
-    :param arb_token: Name of Arb Token
-    :param amounts: Range list of amounts
-    :return: Argument list of lists
+    :param a_token: Name of Base Token
+    :param b_token: Name of Arb Token
+    :param amounts: Amounts to swap. If empty - takes swap_amount from data
+    :return: Tuple of list of tokens & range amounts
+
+    Returns
+    -------
+    >>> parse_args_1inch(...)
+    ([['1', ('0xA0b8', 'USDC', 6), ('0xAf51', 'STG', 18), 4000]...], [3000, 5000, 8000])
+        ^    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾     ^                ^
+       ID         Token A                 Token B        Amount           amounts
+    >>>
+
     """
+    if a_token not in data:
+        raise Exception(f"Token '{a_token}' not in coin data.")
+    if b_token not in data:
+        raise Exception(f"Token '{b_token}' not in coin data.")
 
-    if base_token not in data['base_tokens']:
-        raise Exception(f"Token {base_token} not in 'base_tokens'")
+    a_networks = data[a_token]['networks']
+    b_networks = data[b_token]['networks']
 
-    base_networks = data['base_tokens'][base_token]['networks']
-    arb_networks = data['arb_tokens'][arb_token]['networks']
-
-    if len(amounts) == 0:
-        amounts = data['arb_tokens'][arb_token]['swap_amount']
+    if amounts == 0:
+        try:
+            amounts = data[b_token]['swap_amount']
+        except KeyError:
+            raise Exception(f"Must provide range amounts for {a_token} -> {b_token} token swap.")
 
     args_ab = []
-    for network, data in arb_networks.items():
-        for amount in range(*amounts):
-            network_id = network_names[network]
-            to_token = (data['address'], arb_token, data['decimals'])
+    for network, data in b_networks.items():
+        network_id = network_names[network]
+        to_token = (data['address'], b_token, data['decimals'])
 
-            try:
-                from_token = (base_networks[network]['address'], base_token, base_networks[network]['decimals'])
-            except KeyError:
-                continue
+        try:
+            from_token = (a_networks[network]['address'], a_token, a_networks[network]['decimals'])
+        except KeyError:
+            # Skip if arbitraged token not on this network
+            continue
 
-            args_ab.append([network_id, from_token, to_token, amount])
+        if type(amounts) is list:
+            for amount in amounts:
+                args_ab.append([network_id, from_token, to_token, amount])
+        else:
+            args_ab.append([network_id, from_token, to_token, amounts])
 
-    return args_ab
+    return args_ab, amounts
 
 
 def get_ttl_hash(seconds: int = 1200) -> int:

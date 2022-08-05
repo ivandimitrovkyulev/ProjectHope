@@ -1,13 +1,17 @@
 from dataclasses import dataclass
+from typing import Tuple
 
 
 @dataclass(frozen=True)
 class BinanceSwap:
     """Class for keeping track of Binance swap data.
-    Network name, Network id, gas, FromToken, ToToken"""
-    swap_in: float
-    swap_out: float
-    fee: float
+    swap_in(name, amount), swap_out(name, amount), fee(currency, amount)"""
+    swap_in_name: str
+    swap_in_amount: float
+    swap_out_name: str
+    swap_out_amount: float
+    fee: Tuple[str, float]
 
     def __repr__(self):
-        return f"BinanceSwap {self.swap_in} for {self.swap_out}, fee: {self.fee}"
+        return f"BinanceSwap: {self.swap_in_amount:,} {self.swap_in_name} for " \
+               f"{self.swap_out_amount:,} {self.swap_out_name}, fee: {self.fee[1]} {self.fee[0]}"

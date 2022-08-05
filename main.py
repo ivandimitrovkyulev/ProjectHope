@@ -10,13 +10,11 @@ from time import (
 )
 from concurrent.futures import ThreadPoolExecutor
 
+from src.projecthope.compare import alert_arb
+from src.projecthope.one_inch.api import get_swapout
 from src.projecthope.common.exceptions import exit_handler
-from src.projecthope.common.variables import time_format
 from src.projecthope.common.helpers import print_start_message
-from src.projecthope.one_inch.api import (
-    alert_arb,
-    get_request_1inch,
-)
+from src.projecthope.common.variables import time_format
 
 
 if len(sys.argv) != 2:
@@ -49,6 +47,6 @@ while True:
 
     timestamp = datetime.now().astimezone().strftime(time_format)
     print(f"{timestamp}: Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs. "
-          f"1inch API calls: {abs(total_calls - get_request_1inch.calls)}")
-    total_calls = get_request_1inch.calls
+          f"1inch API calls: {abs(total_calls - get_swapout.calls)}")
+    total_calls = get_swapout.calls
     loop_counter += 1

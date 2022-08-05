@@ -24,6 +24,7 @@ time_format_regex = compile("\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
 network_ids = {
     "1": "Ethereum",
     "56": "Binance",
+    "CEX56": "BinanceCEX",
     "137": "Polygon",
     "10": "Optimism",
     "42161": "Arbitrum",
@@ -35,6 +36,7 @@ network_ids = {
 network_names = {
     "Ethereum": "1",
     "Binance": "56",
+    "BinanceCEX": "CEX56",
     "Polygon": "137",
     "Optimism": "10",
     "Arbitrum": "42161",
