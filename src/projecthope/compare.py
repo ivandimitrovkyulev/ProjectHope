@@ -126,14 +126,13 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
     """
     # Get arbitrage data pairs for each amount swapped
     max_swap_pairs = compare_swaps(data, base_token, arb_token)
-    for swap in max_swap_pairs:
-        print(swap)
+
     for max_swap_pair in max_swap_pairs:
 
         # Unpack values - A->B and B->A
         swap_ab, swap_ba = max_swap_pair
 
-        min_arb = data['arb_tokens'][arb_token]['min_arb']
+        min_arb = data[arb_token]['min_arb']
 
         base_round = int(swap_ab.from_token.decimals // 4)
         arb_round = int(swap_ab.to_token.decimals // 4)
