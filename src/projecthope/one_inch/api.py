@@ -31,7 +31,7 @@ session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 # Set up a cached session that expires in 12 mins. Used for getting ETH fees only
-cached_session = CachedSession(cache_name="w3_cache", backend='sqlite', expire_after=720)
+cached_session = CachedSession(cache_name="etherscan", backend='sqlite', expire_after=720)
 
 
 def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005510, timeout: int = 3) -> dict:
@@ -59,6 +59,7 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
 
     try:
         data = json.loads(response.content)
+        print(data)
         eth_usdc_price = float(data['result']['ethusd'])
     except JSONDecodeError:
         log_error.warning(f"'JSONError' {response.status_code} - {response.url}")

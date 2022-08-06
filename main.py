@@ -51,8 +51,8 @@ while True:
     futures = [Executor.submit(alert_arb, *arg) for arg in arguments]
     concurrent.futures.wait(futures, timeout=10)
 
-    #for future in futures:
-    #    print(future.result())
+    for future in futures:
+        print(future.result())
 
     sleep(10)
 
