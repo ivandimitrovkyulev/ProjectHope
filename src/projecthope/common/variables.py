@@ -44,3 +44,5 @@ network_names = {
     "Fantom": "250",
     "Gnosis": "100",
 }
+
+stable_coins = ['USDC', 'USDT', 'DAI', 'BUSD']
