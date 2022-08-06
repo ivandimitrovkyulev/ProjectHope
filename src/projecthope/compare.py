@@ -124,50 +124,56 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
     :param base_token: Name of Base token being swapped in
     :param arb_token: Name of token being Arbitraged
     """
-    # Get arbitrage data
-    swap_ab, swap_ba = compare_swaps(data, base_token, arb_token)
+    # Get arbitrage data pairs for each amount swapped
+    max_swap_pairs = compare_swaps(data, base_token, arb_token)
+    for swap in max_swap_pairs:
+        print(swap)
+    for max_swap_pair in max_swap_pairs:
 
-    min_arb = data['arb_tokens'][arb_token]['min_arb']
+        # Unpack values - A->B and B->A
+        swap_ab, swap_ba = max_swap_pair
 
-    base_round = int(swap_ab.from_token.decimals // 4)
-    arb_round = int(swap_ab.to_token.decimals // 4)
+        min_arb = data['arb_tokens'][arb_token]['min_arb']
 
-    base_swap_in = round(swap_ab.from_token.amount, base_round)
-    arb_swap_out = round(swap_ab.to_token.amount, arb_round)
-    base_swap_out = round(swap_ba.to_token.amount, base_round)
-    arb_swap_in = round(swap_ba.from_token.amount, arb_round)
+        base_round = int(swap_ab.from_token.decimals // 4)
+        arb_round = int(swap_ab.to_token.decimals // 4)
 
-    chain1 = swap_ab.chain
-    chain2 = swap_ba.chain
+        base_swap_in = round(swap_ab.from_token.amount, base_round)
+        arb_swap_out = round(swap_ab.to_token.amount, arb_round)
+        base_swap_out = round(swap_ba.to_token.amount, base_round)
+        arb_swap_in = round(swap_ba.from_token.amount, arb_round)
 
-    arbitrage = base_swap_out - base_swap_in
-    arbitrage = round(arbitrage, base_round)
+        chain1 = swap_ab.chain
+        chain2 = swap_ba.chain
 
-    if arbitrage >= min_arb:
-        timestamp = datetime.now().astimezone().strftime(time_format)
-        telegram_msg = f"{timestamp}\n" \
-                       f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
-                       f"Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}</a>\n" \
-                       f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
-                       f"Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}</a>\n" \
-                       f"-->Arbitrage: {arbitrage:,} {base_token}"
+        arbitrage = base_swap_out - base_swap_in
+        arbitrage = round(arbitrage, base_round)
 
-        terminal_msg = f"1) {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}\n" \
-                       f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}\n" \
-                       f"-->Arbitrage: {arbitrage:,} {base_token}"
+        if arbitrage >= min_arb:
+            timestamp = datetime.now().astimezone().strftime(time_format)
+            telegram_msg = f"{timestamp}\n" \
+                           f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
+                           f"Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}</a>\n" \
+                           f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
+                           f"Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}</a>\n" \
+                           f"-->Arbitrage: {arbitrage:,} {base_token}"
 
-        if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
-            if fee1 := swap_ab.gas_info.get('usdc_cost'):
-                fee_msg = f", swap+bridge fees ~${fee1:,.0f}"
-            elif fee2 := swap_ba.gas_info.get('usdc_cost'):
-                fee_msg = f", swap+bridge fees ~${fee2:,.0f}"
-            else:
-                fee_msg = f", swap+bridge fees n/a"
+            terminal_msg = f"1) {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}\n" \
+                           f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}\n" \
+                           f"-->Arbitrage: {arbitrage:,} {base_token}"
 
-            telegram_msg += fee_msg
-            terminal_msg += fee_msg
+            if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
+                if fee1 := swap_ab.gas_info.get('usdc_cost'):
+                    fee_msg = f", swap+bridge fees ~${fee1:,.0f}"
+                elif fee2 := swap_ba.gas_info.get('usdc_cost'):
+                    fee_msg = f", swap+bridge fees ~${fee2:,.0f}"
+                else:
+                    fee_msg = f", swap+bridge fees n/a"
 
-        # Send arbitrage to ALL alerts channel and log
-        telegram_send_message(telegram_msg)
-        log_arbitrage.info(terminal_msg)
-        print(f"{terminal_msg}\n")
+                telegram_msg += fee_msg
+                terminal_msg += fee_msg
+
+            # Send arbitrage to ALL alerts channel and log
+            telegram_send_message(telegram_msg)
+            log_arbitrage.info(terminal_msg)
+            print(f"{terminal_msg}\n")

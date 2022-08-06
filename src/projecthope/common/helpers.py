@@ -5,6 +5,7 @@ from typing import (
     Dict,
     Tuple,
 )
+from tabulate import tabulate
 from src.projecthope.common.variables import network_names
 
 
@@ -97,16 +98,24 @@ def get_ttl_hash(seconds: int = 1200) -> int:
 
 def print_start_message(info: dict, base_token: str, timestamp: str) -> None:
 
-    arb_tokens = [token for token in info['arb_tokens']]
-
     print(f"{timestamp} - Started screening the following configurations:")
+
+    arb_tokens = [token for token in info if token != base_token]
+
+    message = []
     for i, arb_token in enumerate(arb_tokens):
 
-        arb_token_networks = [net for net in info['arb_tokens'][arb_token]['networks']
-                              if net in info['base_tokens'][base_token]['networks']]
+        arb_token_networks = [net for net in info[arb_token]['networks']
+                              if net in info[base_token]['networks']]
 
-        ranges = info['arb_tokens'][arb_token]['swap_amount']
-        swap_ranges = [f"{swap:,}" for swap in range(*ranges)]
+        ranges = info[arb_token]['swap_amount']
+        swap_ranges = [f"{int((swap / 1000)):,}k" if swap > 1000 else swap for swap in ranges]
 
-        print(f"[{i+1}] {base_token} -> {arb_token}, amounts{swap_ranges} "
-              f"on {arb_token_networks}")
+        message.append([base_token,
+                        arb_token,
+                        ", ".join(swap_ranges),
+                        ", ".join(arb_token_networks)])
+
+    columns = ["Base\nToken", "Arb\nToken", "Swap Amounts", "On networks"]
+
+    print(tabulate(message, showindex=True, tablefmt="fancy_grid", headers=columns))

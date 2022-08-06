@@ -29,7 +29,7 @@ info = json.loads(sys.argv[-1])
 timestamp = datetime.now().astimezone().strftime(time_format)
 
 base_token = "USDC"
-arb_tokens = [token for token in info['arb_tokens']]
+arb_tokens = [token for token in info if token != base_token]
 
 print_start_message(info, base_token, timestamp)
 
