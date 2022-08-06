@@ -127,7 +127,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     gas_amount = data['estimatedGas']
     gas_info = {"gas_amount": gas_amount}
 
-    # Calculate fees on Ethereum only and add to gas_info dict
+    # Calculate fees on Ethereum only and add to gas_info dictionary
     if include_fees and int(network_id) == 1:
         get_eth_fees(gas_info, gas_amount, timeout=timeout)
 

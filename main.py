@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import concurrent
 
 from atexit import register
 from datetime import datetime
@@ -39,9 +40,19 @@ total_calls = 0
 while True:
     start = perf_counter()
 
+    # Create all Base-Arbitrage token pairs
     arguments = [[info, base_token, arb_token] for arb_token in arb_tokens]
-    with ThreadPoolExecutor(max_workers=len(arguments)) as pool:
-        results = pool.map(lambda p: alert_arb(*p), arguments, timeout=10)
+
+    Executor = ThreadPoolExecutor(len(arguments))
+
+    #with ThreadPoolExecutor(max_workers=len(arguments)) as pool:
+    #    results = pool.map(lambda p: alert_arb(*p), arguments, timeout=10)
+
+    futures = [Executor.submit(alert_arb, *arg) for arg in arguments]
+    concurrent.futures.wait(futures, timeout=10)
+
+    #for future in futures:
+    #    print(future.result())
 
     sleep(10)
 
