@@ -34,6 +34,39 @@ session.mount("http://", adapter)
 cached_session = CachedSession(cache_name="etherscan", backend='sqlite', expire_after=720)
 
 
+def ethusd_price(timeout: int = 3) -> float | None:
+    """
+    Get the ETH/USD price from etherscan.io and cache the request for a specified amount of time.
+
+    :param timeout: :param timeout: Maximum time to wait per GET request
+    :return: The price of Eth in USD or None
+    """
+    api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
+    try:
+        # Cache only Etherscan API get requests!
+        response = cached_session.get(api, timeout=timeout)
+    except ConnectionError or ReadTimeout as e:
+        log_error.warning(f"'ConnectionError' - {e}")
+        return None
+
+    try:
+        data = json.loads(response.content)
+        print(data)
+
+    except JSONDecodeError:
+        log_error.warning(f"'JSONError' {response.status_code} - {response.url}")
+        return None
+
+    if int(data['status']) == 1:
+        eth_usdc_price = float(data['result']['ethusd'])
+
+        return eth_usdc_price
+
+    else:
+        log_error.warning(f"'EtherscanAPI' {response.status_code} - {data['result']}")
+        return None
+
+
 def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005510, timeout: int = 3) -> dict:
     """
     Calculates fees on Ethereum in USD dollars. Adds 'gas_price' and 'usdc_cost' to gas_info dictionary.
@@ -49,25 +82,12 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
     gas_price = contract.eth_gas_price(ttl_hash=get_ttl_hash(1200))
     gas_info['gas_price'] = gas_price
 
-    api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
-    try:
-        # Cache only Etherscan API get requests!
-        response = cached_session.get(api, timeout=timeout)
-    except ConnectionError or ReadTimeout as e:
-        log_error.warning(f"'ConnectionError' - {e}")
-        return gas_info
+    eth_usdc_price = ethusd_price(timeout)
+    if eth_usdc_price:
+        gas_cost_usdc = ((gas_amount * gas_price) / 10 ** 18) * eth_usdc_price
+        bridge_cost_usdc = bridge_fees_eth * eth_usdc_price
 
-    try:
-        data = json.loads(response.content)
-        print(data)
-        eth_usdc_price = float(data['result']['ethusd'])
-    except JSONDecodeError:
-        log_error.warning(f"'JSONError' {response.status_code} - {response.url}")
-        return gas_info
-
-    gas_cost_usdc = ((gas_amount * gas_price) / 10 ** 18) * eth_usdc_price
-    bridge_cost_usdc = bridge_fees_eth * eth_usdc_price
-    gas_info['usdc_cost'] = gas_cost_usdc + bridge_cost_usdc
+        gas_info['usdc_cost'] = gas_cost_usdc + bridge_cost_usdc
 
     return gas_info
 

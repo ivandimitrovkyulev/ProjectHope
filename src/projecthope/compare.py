@@ -161,6 +161,7 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
                            f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}\n" \
                            f"-->Arbitrage: {arbitrage:,} {base_token}"
 
+            # If any of the swaps are on Ethereum try to get gas cost in $
             if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
                 if fee1 := swap_ab.gas_info.get('usdc_cost'):
                     fee_msg = f", swap+bridge fees ~${fee1:,.0f}"
