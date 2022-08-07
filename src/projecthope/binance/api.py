@@ -18,16 +18,16 @@ from src.projecthope.common.variables import (
 client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
 
 
-def trade_b_for_a(token_pair: Tuple[str, str], b_amounts: tuple,
-                  book_limit: int = 100) -> List[BinanceSwap] or None:
+def trade_b_for_a(token_pair: Tuple[str, str], b_amounts: list,
+                  book_limit: int = 1000) -> List[BinanceSwap] | None:
     """
-    Given pair 'AB', by selling amount 'B' calculate the received amount of 'A'
-    Based on Binance's order books asks.
+    Given pair 'AB', by selling amount 'B', calculate the received amount of 'A'
+    Based on Binance's order book asks. Returns none if trading pair not available.
 
     :param token_pair: Token pair to trade, eg. ('ETH', 'USDT'), order matters!
-    :param b_amounts: Amount range of token 'B' to swap in
+    :param b_amounts: List of amounts of token 'B' to swap in
     :param book_limit: Number of asks to check against in the order book
-    :return: BinanceSwap dataclass: (swap_in, swap_out, fee)
+    :return: List of BinanceSwap dataclass: (swap_in, swap_out, fee)
     """
     token_a_name = token_pair[0].upper()
     token_b_name = token_pair[1].upper()
@@ -39,7 +39,7 @@ def trade_b_for_a(token_pair: Tuple[str, str], b_amounts: tuple,
         return None
 
     all_swaps = []
-    for b_amount in range(*b_amounts):
+    for b_amount in b_amounts:
 
         # Deduct binance 0.1% fee before trading
         fee = b_amount * (0.1 / 100.0)
@@ -68,21 +68,24 @@ def trade_b_for_a(token_pair: Tuple[str, str], b_amounts: tuple,
                 # No more stables left to trade
                 break
 
-        swap = BinanceSwap(token_b_name, b_sold, token_a_name, a_bought, (token_b_name, fee))
+        # Deduct b_amount, if any, from total sold
+        b_sold -= b_amount
+
+        swap = BinanceSwap(token_b_name, b_sold, b_amount, token_a_name, a_bought, (token_b_name, fee))
         # Append swap to list of all swaps
         all_swaps.append(swap)
 
     return all_swaps
 
 
-def trade_a_for_b(token_pair: Tuple[str, str], a_amounts: tuple,
-                  book_limit: int = 100) -> List[BinanceSwap] or None:
+def trade_a_for_b(token_pair: Tuple[str, str], a_amounts: list,
+                  book_limit: int = 1000) -> List[BinanceSwap] | None:
     """
-    Given pair 'AB', by selling amount 'A' calculate the received amount of 'B'
-    Based on Binance's order books asks.
+    Given pair 'AB', by selling amount 'A', calculate the received amount of 'B'
+    Based on Binance's order book asks. Returns none if trading pair not available.
 
     :param token_pair: Token pair to trade, eg. 'ETHUSDT', order matters!
-    :param a_amounts: Amount range of token 'A' to swap in
+    :param a_amounts: List of amounts of token 'A' to swap in
     :param book_limit: Number of asks to check against in the order book
     :return: BinanceSwap dataclass: (swap_in, swap_out, fee)
     """
@@ -96,7 +99,7 @@ def trade_a_for_b(token_pair: Tuple[str, str], a_amounts: tuple,
         return None
 
     all_swaps = []
-    for a_amount in range(*a_amounts):
+    for a_amount in a_amounts:
 
         # Deduct binance 0.1% fee before trading
         fee = a_amount * (0.1 / 100.0)
@@ -123,7 +126,10 @@ def trade_a_for_b(token_pair: Tuple[str, str], a_amounts: tuple,
                 # No more tokens left to trade
                 break
 
-        swap = BinanceSwap(token_a_name, total_a_sold, token_b_name, b_bought, (token_a_name, fee))
+        # Deduct a_amount, if any, from total sold
+        total_a_sold -= a_amount
+
+        swap = BinanceSwap(token_a_name, total_a_sold, a_amount, token_b_name, b_bought, (token_a_name, fee))
         # Append swap to list of all swaps
         all_swaps.append(swap)
 

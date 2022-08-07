@@ -48,7 +48,7 @@ def max_swaps(results: Iterator, amounts: list | float) -> list[Swap]:
                 # If not swapping a stable coin - return highest_swap and don't compare with fees
                 return highest_swap
 
-            # Calculate token and fees difference
+            # Calculate token - fees difference
             difference_amount = (highest_amount - second_amount) * stable_token_ratio
             if difference_amount > highest_swap.gas_info['usdc_cost']:
                 return highest_swap
@@ -91,7 +91,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     :param arb_token: Name of token being Arbitraged
     :return: List [max_Swap_ab, max_Swap_ba]
     """
-    # Query all networks for Base->Arb swap outs for each range respectively
+    # Query all networks on 1inch for Base->Arb swap outs for each range respectively
     args_ab, ranges = parse_args_1inch(data, base_token, arb_token)
     with ThreadPoolExecutor(max_workers=len(args_ab)) as pool:
         swaps_ab = pool.map(lambda p: get_swapout(*p), args_ab, timeout=10)

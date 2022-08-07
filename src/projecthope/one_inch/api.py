@@ -24,7 +24,7 @@ contract = EvmContract()
 
 # Set up and configure requests session
 session = requests.Session()
-retry_strategy = Retry(total=2, status_forcelist=[429, 500, 502, 503, 504])
+retry_strategy = Retry(total=2, status_forcelist=[429, 443, 500, 502, 503, 504])
 adapter = HTTPAdapter(max_retries=retry_strategy)
 session.mount("https://", adapter)
 session.mount("http://", adapter)
@@ -59,7 +59,7 @@ def get_ethusd_price(timeout: int = 3, expire_after: int = 720) -> float | None:
 
         if int(data['status']) == 1:
             price = float(data['result']['ethusd'])
-            memcache.set(key="eth_gas_price", value=price, expire=expire_after)
+            memcache.set(key="eth_usdc_price", value=price, expire=expire_after)
 
             return price
 
@@ -75,7 +75,7 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
     Calculates fees on Ethereum in USD dollars. Adds 'gas_price' and 'usdc_cost' to gas_info dictionary.
     Queries https://etherscan.io for ETH/USD info and caches result to avoid rate limit.
 
-    :param gas_info: Dictionary with gas_info data
+    :param gas_info: Dictionary with gas_info data to transform
     :param gas_amount: Gas amount for transaction to be executed
     :param bridge_fees_eth: Eth bridge fees, default 0.005510 ETH
     :param timeout: Maximum time to wait per GET request
@@ -98,7 +98,7 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
 
 @count_func_calls
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
-                amount_float: float, timeout: int = 2, include_fees: bool = True) -> dict or None:
+                amount_float: float, timeout: int = 3, include_fees: bool = True) -> dict or None:
     """
     Queries https://app.1inch.io for swap_out amount between 2 tokens on a given network.
 
@@ -128,7 +128,6 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                "toTokenAddress": to_token_addr,
                "amount": str(amount)}
     try:
-        # requests.get passed throught get_request_1inch func in order to count GET calls
         response = session.get(api, params=payload, timeout=timeout)
     except ConnectionError:
         log_error.warning(f"'ConnectionError': Unable to fetch amount for "

@@ -43,7 +43,7 @@ while True:
     arguments = [[info, base_token, arb_token] for arb_token in arb_tokens]
 
     with ThreadPoolExecutor(max_workers=len(arguments)) as executor:
-        futures = executor.map(lambda p: alert_arb(*p), arguments, timeout=10)
+        results = executor.map(lambda p: alert_arb(*p), arguments, timeout=10)
 
     sleep(10)
 
