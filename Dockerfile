@@ -12,6 +12,10 @@ ENV PYTHONFAULTHANDLER=1 \
 # System dependencies 
 RUN pip install "poetry==$POETRY_VERSION"
 
+# Install memcached server
+RUN apt update \
+    && apt install memcached
+
 # Copy only requirements to cache them in docker layer
 WORKDIR ./projecthope
 COPY poetry.lock pyproject.toml .

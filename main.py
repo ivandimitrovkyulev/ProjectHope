@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import concurrent
 
 from atexit import register
 from datetime import datetime
@@ -12,10 +11,7 @@ from time import (
 from concurrent.futures import ThreadPoolExecutor
 
 from src.projecthope.compare import alert_arb
-from src.projecthope.one_inch.api import (
-    get_swapout,
-    get_eth_fees,
-)
+from src.projecthope.one_inch.api import get_swapout
 from src.projecthope.common.exceptions import exit_handler
 from src.projecthope.common.helpers import print_start_message
 from src.projecthope.common.variables import time_format
@@ -43,22 +39,11 @@ total_calls = 0
 while True:
     start = perf_counter()
 
-    # Query ETH price and Gas price
-    get_eth_fees()
-
     # Create all Base-Arbitrage token pairs
     arguments = [[info, base_token, arb_token] for arb_token in arb_tokens]
 
-    Executor = ThreadPoolExecutor(len(arguments))
-
     with ThreadPoolExecutor(max_workers=len(arguments)) as executor:
         futures = executor.map(lambda p: alert_arb(*p), arguments, timeout=10)
-
-    #futures = [Executor.submit(alert_arb, *arg) for arg in arguments]
-    #concurrent.futures.wait(futures, timeout=10)
-
-    for future in futures:
-        print(future.result())
 
     sleep(10)
 

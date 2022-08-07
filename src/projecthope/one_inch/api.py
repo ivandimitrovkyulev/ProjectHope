@@ -3,7 +3,7 @@ import json
 import requests
 
 from requests.exceptions import ReadTimeout
-from requests_cache import CachedSession
+from pymemcache.client.base import PooledClient
 from urllib3 import Retry
 
 from json.decoder import JSONDecodeError
@@ -11,7 +11,6 @@ from requests.adapters import HTTPAdapter
 
 from src.projecthope.blockchain.evm import EvmContract
 from src.projecthope.common.decorators import count_func_calls
-from src.projecthope.common.helpers import get_ttl_hash
 from src.projecthope.one_inch.datatypes import (
     Token,
     Swap,
@@ -30,41 +29,45 @@ adapter = HTTPAdapter(max_retries=retry_strategy)
 session.mount("https://", adapter)
 session.mount("http://", adapter)
 
-# Set up a cached session that expires in 12 mins. Used for getting ETH fees only
-cached_session = CachedSession(cache_name="etherscan", backend='sqlite', expire_after=720)
+# Set-up memcached client instance
+memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
 
 
-def ethusd_price(timeout: int = 3) -> float | None:
+def get_ethusd_price(timeout: int = 3, expire_after: int = 720) -> float | None:
     """
-    Get the ETH/USD price from etherscan.io and cache the request for a specified amount of time.
+    Get the ETH/USD price from etherscan.io and memcache the request for a specified amount of time.
 
     :param timeout: :param timeout: Maximum time to wait per GET request
+    :param expire_after: Number of seconds until memcached is cleared
     :return: The price of Eth in USD or None
     """
-    api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
-    try:
-        # Cache only Etherscan API get requests!
-        response = cached_session.get(api, timeout=timeout)
-    except ConnectionError or ReadTimeout as e:
-        log_error.warning(f"'ConnectionError' - {e}")
-        return None
+    eth_usdc_price: bytes = memcache.get("eth_usdc_price")
 
-    try:
-        data = json.loads(response.content)
-        print(data)
+    if not eth_usdc_price:
+        api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
+        try:
+            response = session.get(api, timeout=timeout)
+        except ConnectionError or ReadTimeout as e:
+            log_error.warning(f"'ConnectionError' - {e}")
+            return None
 
-    except JSONDecodeError:
-        log_error.warning(f"'JSONError' {response.status_code} - {response.url}")
-        return None
+        try:
+            data = json.loads(response.content)
+        except JSONDecodeError:
+            log_error.warning(f"'JSONError' {response.status_code} - {response.url}")
+            return None
 
-    if int(data['status']) == 1:
-        eth_usdc_price = float(data['result']['ethusd'])
+        if int(data['status']) == 1:
+            price = float(data['result']['ethusd'])
+            memcache.set(key="eth_gas_price", value=price, expire=expire_after)
 
-        return eth_usdc_price
+            return price
 
-    else:
-        log_error.warning(f"'EtherscanAPI' {response.status_code} - {data['result']}")
-        return None
+        else:
+            log_error.warning(f"'EtherscanAPI' {response.status_code} - {data['result']}")
+            return None
+
+    return float(eth_usdc_price.decode("utf-8"))
 
 
 def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005510, timeout: int = 3) -> dict:
@@ -79,10 +82,11 @@ def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005
     :return: Dictionary with updated gas_info data
     """
     # Get ETH gas price from Web3. Result is cached for 1200 secs before querying again
-    gas_price = contract.eth_gas_price(ttl_hash=get_ttl_hash(1200))
-    gas_info['gas_price'] = gas_price
+    gas_price = contract.eth_gas_price()
+    if gas_price:
+        gas_info['gas_price'] = gas_price
 
-    eth_usdc_price = ethusd_price(timeout)
+    eth_usdc_price = get_ethusd_price(timeout)
     if eth_usdc_price:
         gas_cost_usdc = ((gas_amount * gas_price) / 10 ** 18) * eth_usdc_price
         bridge_cost_usdc = bridge_fees_eth * eth_usdc_price
@@ -145,7 +149,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     swap_out = float(data['toTokenAmount'])
     swap_out_float = swap_out / (10 ** to_token_decimal)
 
-    gas_amount = data['estimatedGas']
+    gas_amount = int(data['estimatedGas'])
     gas_info = {"gas_amount": gas_amount}
 
     # Calculate fees on Ethereum only and add to gas_info dictionary

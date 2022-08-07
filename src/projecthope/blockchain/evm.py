@@ -1,9 +1,8 @@
 import os
 
-from functools import lru_cache
-
 from dotenv import load_dotenv
 from typing import Any
+from pymemcache.client.base import PooledClient
 
 from web3.contract import Contract
 from web3.gas_strategies.time_based import construct_time_based_gas_price_strategy
@@ -12,6 +11,10 @@ from web3 import (
     middleware,
 )
 from src.projecthope.common.logger import log_error
+
+
+# Set-up memcached client instance
+memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
 
 
 class EvmContract:
@@ -40,25 +43,34 @@ class EvmContract:
         self.w3.middleware_onion.add(middleware.latest_block_based_cache_middleware)
         self.w3.middleware_onion.add(middleware.simple_cache_middleware)
 
-    @lru_cache()
-    def eth_gas_price(self, ttl_hash: int = None) -> int or None:
+    def eth_gas_price(self, expire_after: int = 720) -> int | None:
         """
         Get a quote for Eth gas price for a transaction to get mined.
         Set to 30secs max_wait, 60 sample_size, 98 probability & weighted False.
         Use 'change_gas_strategy' method to implement a different strategy.
-        Pass get_ttl_hash() to cache for a period of time.
-        """
 
-        counter = 1
-        while True:
-            try:
-                gas_price = self.w3.eth.generateGasPrice()
-                return gas_price
-            except IndexError:
-                log_error.warning(f"Could not query gas price from Web3. Attempt: {counter}")
-                counter += 1
-                if counter > 3:
-                    return None
+        :param expire_after: Number of seconds until memcached is cleared
+        :return: Gas price on Ethereum
+        """
+        eth_gas_price: bytes = memcache.get("eth_gas_price")
+
+        # If memcached returns None
+        if not eth_gas_price:
+            counter = 1
+            while True:
+                try:
+                    gas_price = int(self.w3.eth.generateGasPrice())
+                    memcache.set(key="eth_gas_price", value=gas_price, expire=expire_after)
+
+                    return gas_price
+
+                except IndexError:
+                    log_error.warning(f"Could not query gas price from Web3. Attempt: {counter}")
+                    counter += 1
+                    if counter > 3:
+                        return None
+
+        return int(eth_gas_price.decode("utf-8"))
 
     def change_gas_strategy(self, max_wait: int, sample_size: int = 60,
                             probability: int = 98, weighted: bool = False) -> int:
