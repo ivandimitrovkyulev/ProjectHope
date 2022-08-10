@@ -1,7 +1,6 @@
 ## For screening
 var="$(cat coins.json)"
-docker run --name="projecthope" -it -d "eu.gcr.io/hip-orbit-347017/projecthope" \
-    service memcached start; python3 main.py "$var"
+docker run --name="projecthope" "eu.gcr.io/hip-orbit-347017/projecthope" /bin/bash -c "service memcached start && python3 main.py '$var'"
 
 ## To run docker container checker
 # docker cp projecthope:/projecthope/.env . | chmod go-rw .env
