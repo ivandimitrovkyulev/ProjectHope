@@ -15,6 +15,7 @@ from src.projecthope.one_inch.api import get_swapout
 from src.projecthope.common.exceptions import exit_handler
 from src.projecthope.common.helpers import print_start_message
 from src.projecthope.common.variables import time_format
+from src.projecthope.common.message import telegram_send_message
 
 
 if len(sys.argv) != 2:
@@ -34,6 +35,7 @@ base_token = "USDC"
 arb_tokens = [token for token in info if token != base_token]
 
 print_start_message(info, base_token, timestamp)
+telegram_send_message(f"✅ PROJECTHOPE has started.")
 
 
 loop_counter = 1

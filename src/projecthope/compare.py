@@ -136,15 +136,18 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
         # Unpack values - A->B and B->A
         swap_ab, swap_ba = max_swap_pair
 
+        chain1 = swap_ab.chain
+        chain2 = swap_ba.chain
+
+        if chain1 == chain2:
+            break
+
         min_arb = data[arb_token]['min_arb']
 
         base_swap_in = swap_ab.from_token.amount
         base_swap_out = swap_ba.to_token.amount
         arb_swap_out = swap_ab.to_token.amount
         arb_swap_in = swap_ba.from_token.amount
-
-        chain1 = swap_ab.chain
-        chain2 = swap_ba.chain
 
         arbitrage = base_swap_out - base_swap_in
 
