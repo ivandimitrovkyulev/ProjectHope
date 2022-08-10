@@ -11,7 +11,7 @@ from requests.adapters import HTTPAdapter
 
 from src.projecthope.blockchain.evm import EvmContract
 from src.projecthope.common.decorators import count_func_calls
-from src.projecthope.one_inch.datatypes import (
+from src.projecthope.datatypes import (
     Token,
     Swap,
 )
@@ -70,35 +70,35 @@ def get_ethusd_price(timeout: int = 3, expire_after: int = 720) -> float | None:
     return float(eth_usdc_price.decode("utf-8"))
 
 
-def get_eth_fees(gas_info: dict, gas_amount: int, bridge_fees_eth: float = 0.005510, timeout: int = 3) -> dict:
+def get_eth_fees(cost: dict, gas_amount: int, bridge_fees_eth: float = 0.005510, timeout: int = 3) -> dict:
     """
-    Calculates fees on Ethereum in USD dollars. Adds 'gas_price' and 'usdc_cost' to gas_info dictionary.
+    Calculates fees on Ethereum in USD dollars. Adds 'gas_price' and 'usdc_cost' to cost dictionary.
     Queries https://etherscan.io for ETH/USD info and caches result to avoid rate limit.
 
-    :param gas_info: Dictionary with gas_info data to transform
+    :param cost: Dictionary with cost data to transform
     :param gas_amount: Gas amount for transaction to be executed
     :param bridge_fees_eth: Eth bridge fees, default 0.005510 ETH
     :param timeout: Maximum time to wait per GET request
-    :return: Dictionary with updated gas_info data
+    :return: Dictionary with updated cost data
     """
     # Get ETH gas price from Web3. Result is cached for 1200 secs before querying again
     gas_price = contract.eth_gas_price()
     if gas_price:
-        gas_info['gas_price'] = gas_price
+        cost['gas_price'] = gas_price
 
     eth_usdc_price = get_ethusd_price(timeout)
     if eth_usdc_price:
         gas_cost_usdc = ((gas_amount * gas_price) / 10 ** 18) * eth_usdc_price
         bridge_cost_usdc = bridge_fees_eth * eth_usdc_price
 
-        gas_info['usdc_cost'] = gas_cost_usdc + bridge_cost_usdc
+        cost['usdc_cost'] = gas_cost_usdc + bridge_cost_usdc
 
-    return gas_info
+    return cost
 
 
 @count_func_calls
 def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
-                amount_float: float, timeout: int = 3, include_fees: bool = True) -> dict or None:
+                amount_float: float, timeout: int = 3, include_fees: bool = True) -> Swap | None:
     """
     Queries https://app.1inch.io for swap_out amount between 2 tokens on a given network.
 
@@ -108,7 +108,7 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     :param amount_float: Amount to swap in
     :param timeout: Maximum time to wait per GET request
     :param include_fees: Include Eth fees?
-    :return: Swap dataclass: (network_name, network_id, gas_info, from_token, to_token)
+    :return: Swap dataclass: (network_name, network_id, cost, from_token, to_token)
     """
     api = f"https://api.1inch.io/v4.0/{network_id}/quote"
 
@@ -149,15 +149,15 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     swap_out_float = swap_out / (10 ** to_token_decimal)
 
     gas_amount = int(data['estimatedGas'])
-    gas_info = {"gas_amount": gas_amount}
+    cost = {"gas_amount": gas_amount}
 
-    # Calculate fees on Ethereum only and add to gas_info dictionary
+    # Calculate fees on Ethereum only and add to cost dictionary
     if include_fees and int(network_id) == 1:
-        get_eth_fees(gas_info, gas_amount, timeout=timeout)
+        get_eth_fees(cost, gas_amount, timeout=timeout)
 
-    from_token = Token(from_token_name, from_token_decimal, amount_float)
-    to_token = Token(to_token_name, to_token_decimal, swap_out_float)
+    from_token = Token(from_token_name, amount_float, from_token_decimal)
+    to_token = Token(to_token_name, swap_out_float, to_token_decimal)
 
-    swap = Swap(network_name, network_id, gas_info, from_token, to_token)
+    inch_swap = Swap(network_name, network_id, cost, from_token, to_token)
 
-    return swap
+    return inch_swap

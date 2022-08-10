@@ -1,4 +1,4 @@
-{
+{   "settings": {"sleep_time": 15},
     "USDC": {
         "networks": {
             "Ethereum":  {"address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "decimals": 6},
@@ -12,7 +12,7 @@
         }
     },
     "gOHM": {
-        "swap_amount": [3000, 5000, 8000], "min_arb": -135,
+        "swap_amount": [3500], "min_arb": 35,
         "networks": {
             "Ethereum":  {"address": "0x0ab87046fBb341D058F17CBC4c1133F25a20a52f", "decimals": 18},
             "Polygon":   {"address": "0xd8cA34fd379d9ca3C6Ee3b3905678320F5b45195", "decimals": 18},
@@ -23,7 +23,7 @@
         }
     },
     "STG": {
-        "swap_amount": [3000, 5000, 8000], "min_arb": -135,
+        "swap_amount": [3500], "min_arb": 35,
         "networks": {
             "Ethereum":  {"address": "0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6", "decimals": 18},
             "Binance":   {"address": "0xB0D502E938ed5f4df2E681fE6E419ff29631d62b", "decimals": 18},
@@ -35,10 +35,17 @@
         }
     },
     "GNO": {
-        "swap_amount": [3000, 5000, 8000], "min_arb": -135,
+        "swap_amount": [3500], "min_arb": 35,
         "networks": {
             "Ethereum":  {"address": "0x6810e776880C02933D47DB1b9fc05908e5386b96", "decimals": 18},
             "Gnosis":    {"address": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb", "decimals": 18}
+        }
+    },
+    "WBTC": {
+        "swap_amount": [8000], "min_arb": 35,
+        "networks": {
+            "Ethereum": {"address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", "decimals": 8},
+            "Optimism": {"address": "0x68f180fcCe6836688e9084f035309E29Bf0A2095", "decimals": 8}
         }
     }
 }

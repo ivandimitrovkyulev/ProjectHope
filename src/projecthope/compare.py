@@ -1,12 +1,9 @@
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-from typing import (
-    List,
-    Iterator,
-)
+from typing import List
 
 from src.projecthope.one_inch.api import get_swapout
-from src.projecthope.one_inch.datatypes import Swap
+from src.projecthope.datatypes import Swap
 from src.projecthope.binance.api import (
     trade_a_for_b,
     trade_b_for_a,
@@ -20,11 +17,11 @@ from src.projecthope.common.variables import (
 )
 
 
-def max_swaps(results: Iterator, amounts: list | float) -> list[Swap]:
+def max_swaps(swap_list: list, amounts: list | float) -> list[Swap]:
     """
     Analyses a list of swaps and returns the one with maximum amount in their respective range.
 
-    :param results: Generator object containing swaps
+    :param swap_list: List containing swaps
     :param amounts: Range amounts for swaps
     :return: List of maximum swap_data for each swap amount respectively
     """
@@ -50,7 +47,7 @@ def max_swaps(results: Iterator, amounts: list | float) -> list[Swap]:
 
             # Calculate token - fees difference
             difference_amount = (highest_amount - second_amount) * stable_token_ratio
-            if difference_amount > highest_swap.gas_info['usdc_cost']:
+            if difference_amount > highest_swap.cost['usdc_cost']:
                 return highest_swap
             else:
                 return second_swap
@@ -58,13 +55,12 @@ def max_swaps(results: Iterator, amounts: list | float) -> list[Swap]:
         else:
             return highest_swap
 
-    results_list: list = list(results)
     swaps_amounts: list = []
 
-    if type(amounts) is list:
+    if type(amounts) is list or type(amounts) is tuple:
         for amount in amounts:
             # Create dict{swap_max_amount: swap_data} if swap not None
-            all_swaps = {swap.to_token.amount: swap for swap in results_list
+            all_swaps = {swap.to_token.amount: swap for swap in swap_list
                          if swap and swap.from_token.amount == amount}
 
             # Compare ethereum fees
@@ -73,7 +69,7 @@ def max_swaps(results: Iterator, amounts: list | float) -> list[Swap]:
 
     else:
         # Create dict{swap_max_amount: swap_data} if swap not None
-        all_swaps = {swap.to_token.amount: swap for swap in results_list if swap}
+        all_swaps = {swap.to_token.amount: swap for swap in swap_list if swap}
 
         # Compare ethereum fees
         max_swap = compare_swap_fees(all_swaps)
@@ -92,12 +88,16 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     :return: List [max_Swap_ab, max_Swap_ba]
     """
     # Query all networks on 1inch for Base->Arb swap outs for each range respectively
-    args_ab, ranges = parse_args_1inch(data, base_token, arb_token)
+    args_ab, amounts = parse_args_1inch(data, base_token, arb_token)
     with ThreadPoolExecutor(max_workers=len(args_ab)) as pool:
-        swaps_ab = pool.map(lambda p: get_swapout(*p), args_ab, timeout=10)
+        results = pool.map(lambda p: get_swapout(*p), args_ab, timeout=10)
+
+    # Get Binance CEX prices and a combine with all swaps
+    binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts)
+    swaps_ab = list(binance_swaps_ab) + list(results)
 
     # Get the maximum Swap for each range respectively
-    max_swaps_ab = max_swaps(swaps_ab, ranges)
+    max_swaps_ab = max_swaps(swaps_ab, amounts)
 
     all_max_swaps: list = []
     for max_swap_ab in max_swaps_ab:
@@ -107,7 +107,11 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
         # Query networks for Arb->Base swap out
         args_ba, _ = parse_args_1inch(data, arb_token, base_token, max_amount_ab)
         with ThreadPoolExecutor(max_workers=len(args_ba)) as pool:
-            swaps_ba = pool.map(lambda p: get_swapout(*p), args_ba, timeout=10)
+            results = pool.map(lambda p: get_swapout(*p), args_ba, timeout=10)
+
+        # Get Binance CEX prices and a combine with all swaps
+        binance_swaps_ba = trade_a_for_b(arb_token, base_token, [max_amount_ab])
+        swaps_ba = list(binance_swaps_ba) + list(results)
 
         # Get the maximum swap out - should be list of only 1 item!
         max_swap_ba = max_swaps(swaps_ba, max_amount_ab)[0]
@@ -134,38 +138,36 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
 
         min_arb = data[arb_token]['min_arb']
 
-        base_round = int(swap_ab.from_token.decimals // 4)
-        arb_round = int(swap_ab.to_token.decimals // 4)
-
-        base_swap_in = round(swap_ab.from_token.amount, base_round)
-        arb_swap_out = round(swap_ab.to_token.amount, arb_round)
-        base_swap_out = round(swap_ba.to_token.amount, base_round)
-        arb_swap_in = round(swap_ba.from_token.amount, arb_round)
+        base_swap_in = swap_ab.from_token.amount
+        base_swap_out = swap_ba.to_token.amount
+        arb_swap_out = swap_ab.to_token.amount
+        arb_swap_in = swap_ba.from_token.amount
 
         chain1 = swap_ab.chain
         chain2 = swap_ba.chain
 
         arbitrage = base_swap_out - base_swap_in
-        arbitrage = round(arbitrage, base_round)
 
         if arbitrage >= min_arb:
             timestamp = datetime.now().astimezone().strftime(time_format)
-            telegram_msg = f"{timestamp}\n" \
-                           f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
-                           f"Sell {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}</a>\n" \
-                           f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
-                           f"Sell {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}</a>\n" \
-                           f"-->Arbitrage: {arbitrage:,} {base_token}"
+            telegram_msg = \
+                f"{timestamp}\n" \
+                f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
+                f"Sell {base_swap_in:,.6f} {base_token} for {arb_swap_out:,.6f} {arb_token} on {chain1}</a>\n" \
+                f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
+                f"Sell {arb_swap_in:,.6f} {arb_token} for {base_swap_out:,.6f} {base_token} on {chain2}</a>\n" \
+                f"-->Arbitrage: {arbitrage:,} {base_token}"
 
-            terminal_msg = f"1) {base_swap_in:,} {base_token} for {arb_swap_out:,} {arb_token} on {chain1}\n" \
-                           f"2) {arb_swap_in:,} {arb_token} for {base_swap_out:,} {base_token} on {chain2}\n" \
-                           f"-->Arbitrage: {arbitrage:,} {base_token}"
+            terminal_msg = \
+                f"1) {base_swap_in:,.6f} {base_token} for {arb_swap_out:,.6f} {arb_token} on {chain1}\n" \
+                f"2) {arb_swap_in:,.6f} {arb_token} for {base_swap_out:,.6f} {base_token} on {chain2}\n" \
+                f"-->Arbitrage: {arbitrage:,} {base_token}"
 
             # If any of the swaps are on Ethereum try to get gas cost in $
             if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
-                if fee1 := swap_ab.gas_info.get('usdc_cost'):
+                if fee1 := swap_ab.cost.get('usdc_cost'):
                     fee_msg = f", swap+bridge fees ~${fee1:,.0f}"
-                elif fee2 := swap_ba.gas_info.get('usdc_cost'):
+                elif fee2 := swap_ba.cost.get('usdc_cost'):
                     fee_msg = f", swap+bridge fees ~${fee2:,.0f}"
                 else:
                     fee_msg = f", swap+bridge fees n/a"

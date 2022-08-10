@@ -25,7 +25,9 @@ program_name = os.path.abspath(os.path.basename(__file__))
 register(exit_handler, program_name)
 
 # Fetch variables
-info = json.loads(sys.argv[-1])
+info: dict = json.loads(sys.argv[-1])
+sleep_time = info["settings"]["sleep_time"]
+info.pop('settings')
 timestamp = datetime.now().astimezone().strftime(time_format)
 
 base_token = "USDC"
@@ -45,7 +47,15 @@ while True:
     with ThreadPoolExecutor(max_workers=len(arguments)) as executor:
         results = executor.map(lambda p: alert_arb(*p), arguments, timeout=10)
 
-    sleep(10)
+    try:
+        for result in results:
+            if result:
+                print(result)
+
+    except Exception as e:
+        print(result)
+
+    sleep(15)
 
     timestamp = datetime.now().astimezone().strftime(time_format)
     print(f"{timestamp}: Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs. "

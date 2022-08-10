@@ -1,16 +1,17 @@
 from binance.spot import Spot
 from binance.error import ClientError
 
-from typing import (
-    Tuple,
-    List,
-)
+from typing import List
 
-from src.projecthope.binance.datatypes import BinanceSwap
 from src.projecthope.common.logger import log_error
+from src.projecthope.datatypes import (
+    Token,
+    Swap,
+)
 from src.projecthope.common.variables import (
     BINANCE_KEY,
     BINANCE_SECRET,
+    network_names,
 )
 
 
@@ -18,31 +19,37 @@ from src.projecthope.common.variables import (
 client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
 
 
-def trade_b_for_a(token_pair: Tuple[str, str], b_amounts: list,
-                  book_limit: int = 1000) -> List[BinanceSwap] | None:
+def trade_b_for_a(token_a: str, token_b: str, b_amounts: list,
+                  book_limit: int = 1000) -> List[Swap]:
     """
     Given pair 'AB', by selling amount 'B', calculate the received amount of 'A'
     Based on Binance's order book asks. Returns none if trading pair not available.
 
-    :param token_pair: Token pair to trade, eg. ('ETH', 'USDT'), order matters!
+    :param token_a: Name of Token A
+    :param token_b: Name of Token B
     :param b_amounts: List of amounts of token 'B' to swap in
     :param book_limit: Number of asks to check against in the order book
-    :return: List of BinanceSwap dataclass: (swap_in, swap_out, fee)
+    :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
-    token_a_name = token_pair[0].upper()
-    token_b_name = token_pair[1].upper()
-    pair = token_a_name + token_b_name
+    if type(b_amounts) != list or type(b_amounts) != tuple:
+        b_amounts = list(b_amounts)
+
+    network_name: str = "BinanceCEX"
+    network_id: str = network_names[network_name]
+    pair: str = (token_a + token_b).upper()
+
     try:
         order_book = client.depth(symbol=pair, limit=book_limit)
     except ClientError:
-        log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {token_pair}, amounts: {b_amounts}")
-        return None
+        log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {pair}, amounts: {b_amounts}")
+        return []
 
-    all_swaps = []
+    all_swaps: list = []
     for b_amount in b_amounts:
 
         # Deduct binance 0.1% fee before trading
         fee = b_amount * (0.1 / 100.0)
+        swap_cost = {"exchange_fee": fee}
         b_sold = b_amount
         b_amount -= fee
 
@@ -54,10 +61,10 @@ def trade_b_for_a(token_pair: Tuple[str, str], b_amounts: list,
             quantity = float(item[1])
             cost = price * quantity
 
-            # If stables_amount less than ask total cost
+            # If b_amount less than ask total cost
             if b_amount >= cost:
-                b_amount -= cost
                 a_bought += quantity
+                b_amount -= cost
 
             # otherwise we check how much of the current level we are filling
             else:
@@ -69,40 +76,52 @@ def trade_b_for_a(token_pair: Tuple[str, str], b_amounts: list,
                 break
 
         # Deduct b_amount, if any, from total sold
-        b_sold -= b_amount
+        remainder = b_amount
+        a_bought -= remainder
+        b_sold -= remainder
 
-        swap = BinanceSwap(token_b_name, b_sold, b_amount, token_a_name, a_bought, (token_b_name, fee))
+        from_token = Token(token_b, b_sold)
+        to_token = Token(token_a, a_bought)
+
+        binance_swap = Swap(network_name, network_id, swap_cost, from_token, to_token, remainder)
+
         # Append swap to list of all swaps
-        all_swaps.append(swap)
+        all_swaps.append(binance_swap)
 
     return all_swaps
 
 
-def trade_a_for_b(token_pair: Tuple[str, str], a_amounts: list,
-                  book_limit: int = 1000) -> List[BinanceSwap] | None:
+def trade_a_for_b(token_a: str, token_b: str, a_amounts: list,
+                  book_limit: int = 1000) -> List[Swap]:
     """
     Given pair 'AB', by selling amount 'A', calculate the received amount of 'B'
     Based on Binance's order book asks. Returns none if trading pair not available.
 
-    :param token_pair: Token pair to trade, eg. 'ETHUSDT', order matters!
+    :param token_a: Name of Token A
+    :param token_b: Name of Token B
     :param a_amounts: List of amounts of token 'A' to swap in
     :param book_limit: Number of asks to check against in the order book
-    :return: BinanceSwap dataclass: (swap_in, swap_out, fee)
+    :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
-    token_a_name = token_pair[0].upper()
-    token_b_name = token_pair[1].upper()
-    pair = token_a_name + token_b_name
+    if type(a_amounts) != list or type(a_amounts) != tuple:
+        b_amounts = list(a_amounts)
+
+    network_name: str = "BinanceCEX"
+    network_id: str = network_names[network_name]
+    pair: str = (token_a + token_b).upper()
+
     try:
         order_book = client.depth(symbol=pair, limit=book_limit)
     except ClientError:
-        log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {token_pair}, amount: {a_amounts}")
-        return None
+        log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {pair}, amount: {a_amounts}")
+        return []
 
-    all_swaps = []
+    all_swaps: list = []
     for a_amount in a_amounts:
 
         # Deduct binance 0.1% fee before trading
         fee = a_amount * (0.1 / 100.0)
+        swap_cost = {"exchange_fee": fee}
         total_a_sold = a_amount
         a_amount -= fee
 
@@ -120,17 +139,22 @@ def trade_a_for_b(token_pair: Tuple[str, str], a_amounts: list,
                 a_sold += quantity
                 b_bought += cost
             else:
+                last_quantity_sold = float(a_amount * price)
                 a_sold += a_amount
-                b_bought += a_amount * price
+                b_bought += last_quantity_sold
 
                 # No more tokens left to trade
                 break
 
         # Deduct a_amount, if any, from total sold
-        total_a_sold -= a_amount
+        remainder = (total_a_sold - fee) - a_sold
 
-        swap = BinanceSwap(token_a_name, total_a_sold, a_amount, token_b_name, b_bought, (token_a_name, fee))
+        from_token = Token(token_a, total_a_sold)
+        to_token = Token(token_b, b_bought)
+
+        binance_swap = Swap(network_name, network_id, swap_cost, from_token, to_token, remainder)
+
         # Append swap to list of all swaps
-        all_swaps.append(swap)
+        all_swaps.append(binance_swap)
 
     return all_swaps
