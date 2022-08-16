@@ -13,7 +13,7 @@ from src.projecthope.common.helpers import parse_args_1inch
 from src.projecthope.common.logger import log_arbitrage
 from src.projecthope.common.variables import (
     time_format,
-    stable_coins,
+    base_tokens,
 )
 
 
@@ -37,9 +37,9 @@ def max_swaps(swap_list: list, amounts: list | float) -> list[Swap]:
             second_swap = swaps[second_amount]
 
             # Calculate Stablecoin to Token ratio to adjust accordingly
-            if highest_swap.from_token.name in stable_coins:
+            if highest_swap.from_token.name in base_tokens:
                 stable_token_ratio = highest_swap.from_token.amount / highest_swap.to_token.amount
-            elif highest_swap.to_token.name in stable_coins:
+            elif highest_swap.to_token.name in base_tokens:
                 stable_token_ratio = 1
             else:
                 # If not swapping a stable coin - return highest_swap and don't compare with fees
@@ -63,17 +63,19 @@ def max_swaps(swap_list: list, amounts: list | float) -> list[Swap]:
             all_swaps = {swap.to_token.amount: swap for swap in swap_list
                          if swap and swap.from_token.amount == amount}
 
-            # Compare ethereum fees
-            max_swap = compare_swap_fees(all_swaps)
-            swaps_amounts.append(max_swap)
+            # Compare ethereum fees if all_swaps is not empty
+            if len(all_swaps) > 0:
+                max_swap = compare_swap_fees(all_swaps)
+                swaps_amounts.append(max_swap)
 
     else:
         # Create dict{swap_max_amount: swap_data} if swap not None
         all_swaps = {swap.to_token.amount: swap for swap in swap_list if swap}
 
-        # Compare ethereum fees
-        max_swap = compare_swap_fees(all_swaps)
-        swaps_amounts.append(max_swap)
+        # Compare ethereum fees if all_swaps is not empty
+        if len(all_swaps) > 0:
+            max_swap = compare_swap_fees(all_swaps)
+            swaps_amounts.append(max_swap)
 
     return swaps_amounts
 
@@ -87,6 +89,8 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     :param arb_token: Name of token being Arbitraged
     :return: List [max_Swap_ab, max_Swap_ba]
     """
+    all_max_swaps: list = []
+
     # Query all networks on 1inch for Base->Arb swap outs for each range respectively
     args_ab, amounts = parse_args_1inch(data, base_token, arb_token)
     with ThreadPoolExecutor(max_workers=len(args_ab)) as pool:
@@ -99,7 +103,10 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     # Get the maximum Swap for each range respectively
     max_swaps_ab = max_swaps(swaps_ab, amounts)
 
-    all_max_swaps: list = []
+    # If no swaps returned - return an empty list
+    if len(max_swaps_ab) == 0:
+        return all_max_swaps
+
     for max_swap_ab in max_swaps_ab:
         # Save only 1 amount to query in Arb->Base
         max_amount_ab = max_swap_ab.to_token.amount
@@ -114,8 +121,11 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
         swaps_ba = list(binance_swaps_ba) + list(results)
 
         # Get the maximum swap out - should be list of only 1 item!
-        max_swap_ba = max_swaps(swaps_ba, max_amount_ab)[0]
-        all_max_swaps.append([max_swap_ab, max_swap_ba])
+        max_swaps_ba = max_swaps(swaps_ba, max_amount_ab)
+
+        if len(max_swaps_ba) > 0:
+            max_swap_ba = max_swaps_ba[0]
+            all_max_swaps.append([max_swap_ab, max_swap_ba])
 
     return all_max_swaps
 
@@ -130,6 +140,10 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
     """
     # Get arbitrage data pairs for each amount swapped
     max_swap_pairs = compare_swaps(data, base_token, arb_token)
+
+    # If max_swap_pairs is an empty list - return
+    if len(max_swap_pairs) == 0:
+        return
 
     for max_swap_pair in max_swap_pairs:
 

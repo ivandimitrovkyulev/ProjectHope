@@ -14,8 +14,12 @@ from src.projecthope.compare import alert_arb
 from src.projecthope.one_inch.api import get_swapout
 from src.projecthope.common.exceptions import exit_handler
 from src.projecthope.common.helpers import print_start_message
-from src.projecthope.common.variables import time_format
 from src.projecthope.common.message import telegram_send_message
+from src.projecthope.common.logger import log_error
+from src.projecthope.common.variables import (
+    time_format,
+    base_tokens,
+)
 
 
 if len(sys.argv) != 2:
@@ -32,7 +36,7 @@ info.pop('settings')
 
 timestamp = datetime.now().astimezone().strftime(time_format)
 
-arb_tokens = [token for token in info if token != base_token]
+arb_tokens = [token for token in info if token not in base_tokens]
 
 print_start_message(info, base_token, timestamp)
 telegram_send_message(f"✅ PROJECTHOPE has started.")
@@ -52,10 +56,10 @@ while True:
     try:
         for result in results:
             if result:
-                print(result)
+                log_error.info(result)
 
     except Exception as e:
-        print(result)
+        log_error.info(e)
 
     sleep(15)
 

@@ -19,13 +19,13 @@ BINANCE_SECRET = os.getenv("BINANCE_SECRET")
 time_format = "%Y-%m-%d %H:%M:%S, %Z"
 
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
-time_format_regex = compile("\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
+time_format_regex = compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
 
 
 network_ids = {
     "1": "Ethereum",
     "56": "Binance",
-    "CEX56": "BinanceCEX",
+    "0000": "BinanceCEX",
     "137": "Polygon",
     "10": "Optimism",
     "42161": "Arbitrum",
@@ -37,7 +37,7 @@ network_ids = {
 network_names = {
     "Ethereum": "1",
     "Binance": "56",
-    "BinanceCEX": "CEX56",
+    "BinanceCEX": "0000",
     "Polygon": "137",
     "Optimism": "10",
     "Arbitrum": "42161",
@@ -46,4 +46,4 @@ network_names = {
     "Gnosis": "100",
 }
 
-stable_coins = ['USDC', 'USDT', 'DAI', 'BUSD']
+base_tokens = ['USDC', 'USDT', 'DAI', 'BUSD']

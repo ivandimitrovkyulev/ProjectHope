@@ -7,6 +7,7 @@ from typing import (
 )
 from tabulate import tabulate
 from src.projecthope.common.variables import network_names
+from src.projecthope.common.variables import base_tokens
 
 
 def compare_lists(new_list: List[Dict[str, str]], old_list: List[Dict[str, str]],
@@ -100,7 +101,7 @@ def print_start_message(info: dict, base_token: str, timestamp: str) -> None:
 
     print(f"{timestamp} - Started screening the following configurations:")
 
-    arb_tokens = [token for token in info if token != base_token]
+    arb_tokens = [token for token in info if token not in base_tokens]
 
     message = []
     for i, arb_token in enumerate(arb_tokens):

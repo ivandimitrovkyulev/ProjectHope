@@ -1,5 +1,5 @@
 {   
-    "settings": {"sleep_time": 15, "base_token": "USDC"},
+    "settings": {"sleep_time": 15, "base_token": "USDT"},
     "USDC": {
         "networks": {
             "Ethereum":  {"address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "decimals": 6},
@@ -10,6 +10,18 @@
             "Avalanche": {"address": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664", "decimals": 6},
             "Fantom":    {"address": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75", "decimals": 6},
             "Gnosis":    {"address": "0xddafbb505ad214d7b80b1f830fccc89b60fb7a83", "decimals": 6}
+        }
+    },
+    "USDT": {
+        "networks": {
+            "Ethereum":  {"address": "0xdAC17F958D2ee523a2206206994597C13D831ec7", "decimals": 6},
+            "Binance":   {"address": "0x55d398326f99059fF775485246999027B3197955", "decimals": 18},
+            "Polygon":   {"address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", "decimals": 6},
+            "Optimism":  {"address": "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", "decimals": 6},
+            "Arbitrum":  {"address": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", "decimals": 6},
+            "Avalanche": {"address": "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", "decimals": 6},
+            "Fantom":    {"address": "0x940F41F0ec9ba1A34CF001cc03347ac092F5F6B5", "decimals": 6},
+            "Gnosis":    {"address": "0x4ECaBa5870353805a9F068101A40E0f32ed605C6", "decimals": 6}
         }
     },
     "GNO": {
