@@ -27,11 +27,11 @@ register(exit_handler, program_name)
 
 # Fetch variables
 info: dict = json.loads(sys.argv[-1])
-sleep_time = info["settings"]["sleep_time"]
+sleep_time, base_token = info["settings"].values()
 info.pop('settings')
+
 timestamp = datetime.now().astimezone().strftime(time_format)
 
-base_token = "USDC"
 arb_tokens = [token for token in info if token != base_token]
 
 print_start_message(info, base_token, timestamp)
