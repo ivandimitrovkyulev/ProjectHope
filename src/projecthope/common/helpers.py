@@ -115,8 +115,9 @@ def print_start_message(info: dict, base_token: str, timestamp: str) -> None:
         message.append([base_token,
                         arb_token,
                         ", ".join(swap_ranges),
-                        ", ".join(arb_token_networks)])
+                        ", ".join(arb_token_networks),
+                        info[arb_token]['min_arb'], ])
 
-    columns = ["Base\nToken", "Arb\nToken", "Swap Amounts", "On networks"]
+    columns = ["Base\nToken", "Arb\nToken", "Swap Amounts", "On networks", "Min. Arb."]
 
     print(tabulate(message, showindex=True, tablefmt="fancy_grid", headers=columns))
