@@ -167,30 +167,39 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
 
         if arbitrage >= min_arb:
             timestamp = datetime.now().astimezone().strftime(time_format)
-            telegram_msg = \
-                f"{timestamp}\n" \
-                f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
-                f"Sell {base_swap_in:,.6f} {base_token} for {arb_swap_out:,.6f} {arb_token} on {chain1}</a>\n" \
-                f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
-                f"Sell {arb_swap_in:,.6f} {arb_token} for {base_swap_out:,.6f} {base_token} on {chain2}</a>\n" \
-                f"-->Arbitrage: {arbitrage:,} {base_token}"
 
-            terminal_msg = \
-                f"1) {base_swap_in:,.6f} {base_token} for {arb_swap_out:,.6f} {arb_token} on {chain1}\n" \
-                f"2) {arb_swap_in:,.6f} {arb_token} for {base_swap_out:,.6f} {base_token} on {chain2}\n" \
-                f"-->Arbitrage: {arbitrage:,} {base_token}"
+            swap_1 = f"1) Sell {base_swap_in:,.0f} {base_token} for {arb_swap_out:,.4f} {arb_token} on {chain1}"
+            swap_2 = f"2) Sell {arb_swap_in:,.4f} {arb_token} for {base_swap_out:,.0f} {base_token} on {chain2}"
+            arb_string = f"{arbitrage:,.0f} {base_token}"
+
+            if chain1.lower() == "binancecex":
+                swap_1_link = f"<a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_1}</a>"
+            else:
+                swap_1_link = f"<a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
+                              f"{swap_1}</a>"
+
+            if chain2.lower() == "binancecex":
+                swap_2_link = f"<a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_2}</a>"
+            else:
+                swap_2_link = f"<a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
+                              f"{swap_2}</a>"
+
+            telegram_msg = f"{timestamp}\n{swap_1_link}\n{swap_2_link}\n-->Arbitrage: {arb_string}"
+            terminal_msg = f"{swap_1}\n{swap_2}\n-->Arbitrage: {arb_string}"
 
             # If any of the swaps are on Ethereum try to get gas cost in $
             if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
                 if fee1 := swap_ab.cost.get('usdc_cost'):
-                    fee_msg = f", swap+bridge fees ~${fee1:,.0f}"
+                    fee_msg = f", eth fees ~${fee1:,.0f}"
                 elif fee2 := swap_ba.cost.get('usdc_cost'):
-                    fee_msg = f", swap+bridge fees ~${fee2:,.0f}"
+                    fee_msg = f", eth fees ~${fee2:,.0f}"
                 else:
-                    fee_msg = f", swap+bridge fees n/a"
+                    fee_msg = f", eth fees n/a"
+            else:
+                fee_msg = f", eth fees n/a"
 
-                telegram_msg += fee_msg
-                terminal_msg += fee_msg
+            telegram_msg += fee_msg
+            terminal_msg += fee_msg
 
             # Send arbitrage to ALL alerts channel and log
             telegram_send_message(telegram_msg)
