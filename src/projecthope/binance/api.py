@@ -40,8 +40,8 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list,
 
     try:
         order_book = client.depth(symbol=pair, limit=book_limit)
-    except ClientError:
-        log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {pair}, amounts: {b_amounts}")
+    except ClientError as e:
+        log_error.warning(f"BinanceCEX API, ClientError: {e}. Pair: {pair}, amounts: {b_amounts}")
         return []
 
     all_swaps: list = []

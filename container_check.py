@@ -3,11 +3,11 @@ Program that constantly checks if a docker container is running.
 It checks the Loop timestamps and notifies vie Telegram if the last timestamp was older than 15 mins.
 """
 import os
+import re
 import sys
 import time
 import datetime
 import requests
-from re import compile
 from atexit import register
 
 
@@ -57,7 +57,7 @@ def telegram_send_message(message_text: str) -> requests.Response or None:
 
 current_dir = os.getcwd()
 time_format = "%Y-%m-%d %H:%M:%S, %Z"
-time_format_regex = compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
+time_format_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
 program_name = os.path.abspath(os.path.basename(__file__))
 program_start_time = datetime.datetime.now()
 
@@ -101,8 +101,12 @@ while True:
 
     # Alert every 12hours if the script is still running
     if now_time - program_start_time > datetime.timedelta(hours=update_time):
+        temp = re.split(r"[ ]?sec[s]?", output)[0]
+        loop_time = float(re.split(r" ", temp)[-1])
+        message = f"✅ {container_name.upper()} is running({update_time}h updates). " \
+                  f"Last loop execution: {loop_time:,.1f} secs."
 
-        telegram_send_message(f"✅ {container_name.upper()} is running. Update: {update_time} hours.")
+        telegram_send_message(message)
         program_start_time = datetime.datetime.now()
 
     time.sleep(wait_time)
