@@ -13,6 +13,8 @@ requests-cache = "^0.9.5"
 binance-connector = "^1.15.0"
 tabulate = "^0.8.10"
 pymemcache = "^3.5.2"
+python-binance = "^1.0.16"
+websocket-client = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

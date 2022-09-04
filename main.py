@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from src.projecthope.compare import alert_arb
 from src.projecthope.one_inch.api import get_swapout
+
 from src.projecthope.common.exceptions import exit_handler
 from src.projecthope.common.helpers import print_start_message
 from src.projecthope.common.message import telegram_send_message
@@ -55,7 +56,7 @@ while True:
 
     try:
         for result in results:
-            if result:
+            if not result:
                 log_error.info(result)
 
     except Exception as e:

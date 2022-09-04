@@ -1,10 +1,18 @@
 import os
 import json
 import requests
+import asyncio
+
+from typing import List
 
 from requests.exceptions import ReadTimeout
 from pymemcache.client.base import PooledClient
 from urllib3 import Retry
+from aiohttp import (
+    ClientSession,
+    ClientTimeout,
+    ClientConnectorSSLError,
+)
 
 from json.decoder import JSONDecodeError
 from requests.adapters import HTTPAdapter
@@ -28,6 +36,9 @@ retry_strategy = Retry(total=2, status_forcelist=[429, 443, 500, 502, 503, 504])
 adapter = HTTPAdapter(max_retries=retry_strategy)
 session.mount("https://", adapter)
 session.mount("http://", adapter)
+
+# Configure aiohttp timeout
+timeout_class = ClientTimeout(total=3)
 
 # Set-up memcached client instance
 memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
@@ -97,8 +108,8 @@ def get_eth_fees(cost: dict, gas_amount: int, bridge_fees_eth: float = 0.005510,
 
 
 @count_func_calls
-def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
-                amount_float: float, timeout: int = 3, include_fees: bool = True) -> Swap | None:
+async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
+                      amount_float: float, timeout: int = 3, include_fees: bool = True) -> Swap | None:
     """
     Queries https://app.1inch.io for swap_out amount between 2 tokens on a given network.
 
@@ -127,23 +138,26 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     payload = {"fromTokenAddress": from_token_addr,
                "toTokenAddress": to_token_addr,
                "amount": str(amount)}
-    try:
-        response = session.get(api, params=payload, timeout=timeout)
-    except ConnectionError:
-        log_error.warning(f"'ConnectionError': Unable to fetch amount for "
-                          f"{network_name} {from_token_name} -> {to_token_name}")
-        return None
 
-    try:
-        data = json.loads(response.content)
-    except JSONDecodeError:
-        log_error.warning(f"'JSONError' {response.status_code} - {response.url}")
-        return None
+    async with ClientSession(timeout=timeout_class) as http_session:
+        try:
+            async with http_session.get(api, ssl=False, params=payload) as response:
 
-    if response.status_code != 200:
-        log_error.warning(f"'ResponseError' {response.status_code}, {data['error']}, {data['description']} - "
-                          f"{network_name}, {amount_float} {from_token_name} -> {to_token_name}")
-        return None
+                try:
+                    data = json.loads(await response.text())
+                except JSONDecodeError as e:
+                    log_error.warning(f"'JSONError' - {response.status} - {e} - {response.url}")
+                    return None
+
+                if response.status != 200:
+                    log_error.warning(f"'ResponseError' {response.status}, {data['error']}, {data['description']} - "
+                                      f"{network_name}, {amount_float} {from_token_name} -> {to_token_name}")
+                    return None
+
+        except ClientConnectorSSLError as e:
+            log_error.warning(f"'ConnectionError' - {e} - Unable to fetch amount for "
+                              f"{network_name} {from_token_name} -> {to_token_name}")
+            return None
 
     swap_out = float(data['toTokenAmount'])
     swap_out_float = swap_out / (10 ** to_token_decimal)
@@ -161,3 +175,17 @@ def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     inch_swap = Swap(network_name, network_id, cost, from_token, to_token)
 
     return inch_swap
+
+
+async def get_all_swapouts(func_args: List[list]):
+    """
+    Gathers all asyncio http requests to be scheduled.
+
+    :param func_args: List of function arguments
+    :return: List of all 1inch swaps
+    """
+    arguments = [get_swapout(*arg) for arg in func_args]
+
+    func_results = await asyncio.gather(*arguments)
+
+    return func_results

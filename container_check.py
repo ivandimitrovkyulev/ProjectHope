@@ -62,7 +62,7 @@ program_name = os.path.abspath(os.path.basename(__file__))
 program_start_time = datetime.datetime.now()
 
 container_name = sys.argv[-1]
-register(telegram_send_message, f"⚠️ <b>{container_name.upper()}</b>: {program_name} stopped!")
+register(telegram_send_message, f"⚠️ <b>{container_name.upper()}: container_check.py</b> stopped!")
 
 wait_time = 15 * 60  # 15 mins (15 * 60 secs) sleep time in each loop
 max_time_diff = 15 * 60  # 15 mins max difference(in secs) between current and script's last timestamp

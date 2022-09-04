@@ -1,13 +1,13 @@
+import asyncio
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
-from src.projecthope.one_inch.api import get_swapout
 from src.projecthope.datatypes import Swap
 from src.projecthope.binance.api import (
     trade_a_for_b,
     trade_b_for_a,
 )
+from src.projecthope.one_inch.api import get_all_swapouts
 from src.projecthope.common.message import telegram_send_message
 from src.projecthope.common.helpers import parse_args_1inch
 from src.projecthope.common.logger import log_arbitrage
@@ -93,8 +93,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
 
     # Query all networks on 1inch for Base->Arb swap outs for each range respectively
     args_ab, amounts = parse_args_1inch(data, base_token, arb_token)
-    with ThreadPoolExecutor(max_workers=len(args_ab)) as pool:
-        results = pool.map(lambda p: get_swapout(*p), args_ab, timeout=10)
+    results = asyncio.run(get_all_swapouts(args_ab))
 
     # Get Binance CEX prices and a combine with all swaps
     binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts)
@@ -113,8 +112,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
 
         # Query networks for Arb->Base swap out
         args_ba, _ = parse_args_1inch(data, arb_token, base_token, max_amount_ab)
-        with ThreadPoolExecutor(max_workers=len(args_ba)) as pool:
-            results = pool.map(lambda p: get_swapout(*p), args_ba, timeout=10)
+        results = asyncio.run(get_all_swapouts(args_ba))
 
         # Get Binance CEX prices and a combine with all swaps
         binance_swaps_ba = trade_a_for_b(arb_token, base_token, [max_amount_ab])
