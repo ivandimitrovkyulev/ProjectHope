@@ -56,7 +56,7 @@ while True:
 
     try:
         for result in results:
-            if not result:
+            if result:
                 log_error.info(result)
 
     except Exception as e:

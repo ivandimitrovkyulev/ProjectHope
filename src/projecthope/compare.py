@@ -80,7 +80,7 @@ def max_swaps(swap_list: list, amounts: list | float) -> list[Swap]:
     return swaps_amounts
 
 
-def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap]]:
+def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap]] | None:
     """
     Compares 1inch supported blockchains for arbitrage between 2 tokens.
 
@@ -104,7 +104,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
 
     # If no swaps returned - return an empty list
     if len(max_swaps_ab) == 0:
-        return all_max_swaps
+        return None
 
     for max_swap_ab in max_swaps_ab:
         # Save only 1 amount to query in Arb->Base
@@ -140,7 +140,7 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
     max_swap_pairs = compare_swaps(data, base_token, arb_token)
 
     # If max_swap_pairs is an empty list - return
-    if len(max_swap_pairs) == 0:
+    if not max_swap_pairs:
         return
 
     for max_swap_pair in max_swap_pairs:
@@ -151,8 +151,9 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
         chain1 = swap_ab.chain
         chain2 = swap_ba.chain
 
-        if chain1 == chain2:
-            break
+        # This may cause pairs to get 'skipped'!
+        #if chain1 == chain2:
+        #    break
 
         min_arb = data[arb_token]['min_arb']
 
