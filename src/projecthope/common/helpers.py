@@ -1,9 +1,11 @@
 import time
+import asyncio
 
 from typing import (
     List,
     Dict,
     Tuple,
+    Callable,
 )
 from tabulate import tabulate
 from src.projecthope.common.variables import network_names
@@ -121,3 +123,18 @@ def print_start_message(info: dict, base_token: str, timestamp: str) -> None:
     columns = ["Base\nToken", "Arb\nToken", "Swap Amounts", "On networks", "Min. Arb."]
 
     print(tabulate(message, showindex=True, tablefmt="fancy_grid", headers=columns))
+
+
+async def gather_funcs(function: Callable, func_args: List[list]) -> tuple:
+    """
+    Gathers all asyncio http requests to be scheduled.
+
+    :param function: Function name pointer to execute
+    :param func_args: List of function arguments
+    :return: List of all 1inch swaps
+    """
+    function_list = [function(*arg) for arg in func_args]
+
+    func_results = await asyncio.gather(*function_list)
+
+    return func_results

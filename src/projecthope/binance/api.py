@@ -19,8 +19,7 @@ from src.projecthope.common.variables import (
 client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
 
 
-def trade_b_for_a(token_a: str, token_b: str, b_amounts: list,
-                  book_limit: int = 1000) -> List[Swap]:
+def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, book_limit: int = 1000) -> List[Swap]:
     """
     Given pair 'AB', by selling amount 'B', calculate the received amount of 'A'
     Based on Binance's order book asks. Returns none if trading pair not available.
@@ -91,8 +90,7 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list,
     return all_swaps
 
 
-def trade_a_for_b(token_a: str, token_b: str, a_amounts: list,
-                  book_limit: int = 1000) -> List[Swap]:
+def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, book_limit: int = 1000) -> List[Swap]:
     """
     Given pair 'AB', by selling amount 'A', calculate the received amount of 'B'
     Based on Binance's order book asks. Returns none if trading pair not available.
@@ -104,7 +102,7 @@ def trade_a_for_b(token_a: str, token_b: str, a_amounts: list,
     :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
     if type(a_amounts) != list or type(a_amounts) != tuple:
-        b_amounts = list(a_amounts)
+        a_amounts = list(a_amounts)
 
     network_name: str = "BinanceCEX"
     network_id: str = network_names[network_name]

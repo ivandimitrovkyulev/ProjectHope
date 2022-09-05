@@ -1,9 +1,6 @@
 import os
 import json
 import requests
-import asyncio
-
-from typing import List
 
 from requests.exceptions import ReadTimeout
 from pymemcache.client.base import PooledClient
@@ -175,17 +172,3 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     inch_swap = Swap(network_name, network_id, cost, from_token, to_token)
 
     return inch_swap
-
-
-async def get_all_swapouts(func_args: List[list]):
-    """
-    Gathers all asyncio http requests to be scheduled.
-
-    :param func_args: List of function arguments
-    :return: List of all 1inch swaps
-    """
-    arguments = [get_swapout(*arg) for arg in func_args]
-
-    func_results = await asyncio.gather(*arguments)
-
-    return func_results
