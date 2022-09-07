@@ -2,8 +2,16 @@
 Set up program variables.
 """
 import os
+
 from re import compile
+from urllib3 import Retry
 from dotenv import load_dotenv
+from aiohttp import ClientTimeout
+from requests import Session
+from requests.adapters import HTTPAdapter
+
+from binance.spot import Spot
+from pymemcache.client.base import PooledClient
 
 
 load_dotenv()
@@ -15,6 +23,22 @@ CHAT_ID_DEBUG = os.getenv("CHAT_ID_DEBUG")
 BINANCE_KEY = os.getenv("BINANCE_KEY")
 BINANCE_SECRET = os.getenv("BINANCE_SECRET")
 
+# Initialise binance client class
+binance_client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
+
+# Set-up memcached client instance
+memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
+
+# Set up and configure requests session
+http_session = Session()
+retry_strategy = Retry(total=2, status_forcelist=[429, 443, 500, 502, 503, 504])
+adapter = HTTPAdapter(max_retries=retry_strategy)
+http_session.mount("https://", adapter)
+http_session.mount("http://", adapter)
+
+
+# Configure aiohttp timeout
+timeout_class = ClientTimeout(total=3)
 
 time_format = "%Y-%m-%d %H:%M:%S, %Z"
 

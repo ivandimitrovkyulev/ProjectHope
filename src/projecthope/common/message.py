@@ -61,6 +61,7 @@ def telegram_send_message(
 
     # send the POST request
     try:
+        counter = 1
         # If too many requests, wait for Telegram's rate limit
         while True:
             post_request = requests.post(url=url, data=payload, timeout=timeout)
@@ -68,6 +69,9 @@ def telegram_send_message(
             if post_request.json()['ok']:
                 return post_request
 
+            log_error.warning(f"'telegram_send_message' -Telegram message not sent, attempt {counter}. "
+                              f"Sleeping for 3 secs...")
+            counter += 1
             sleep(3)
 
     except ConnectionError as e:

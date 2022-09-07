@@ -7,10 +7,13 @@ from src.projecthope.binance.api import (
     trade_a_for_b,
     trade_b_for_a,
 )
-from src.projecthope.one_inch.api import get_all_swapouts
+from src.projecthope.one_inch.api import get_swapout
 from src.projecthope.common.message import telegram_send_message
-from src.projecthope.common.helpers import parse_args_1inch
 from src.projecthope.common.logger import log_arbitrage
+from src.projecthope.common.helpers import (
+    parse_args_1inch,
+    gather_funcs,
+)
 from src.projecthope.common.variables import (
     time_format,
     base_tokens,
@@ -93,7 +96,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
 
     # Query all networks on 1inch for Base->Arb swap outs for each range respectively
     args_ab, amounts = parse_args_1inch(data, base_token, arb_token)
-    results = asyncio.run(get_all_swapouts(args_ab))
+    results = asyncio.run(gather_funcs(get_swapout, args_ab))
 
     # Get Binance CEX prices and a combine with all swaps
     binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts)
@@ -112,7 +115,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
 
         # Query networks for Arb->Base swap out
         args_ba, _ = parse_args_1inch(data, arb_token, base_token, max_amount_ab)
-        results = asyncio.run(get_all_swapouts(args_ba))
+        results = asyncio.run(gather_funcs(get_swapout, args_ba))
 
         # Get Binance CEX prices and a combine with all swaps
         binance_swaps_ba = trade_a_for_b(arb_token, base_token, [max_amount_ab])
@@ -152,8 +155,8 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
         chain2 = swap_ba.chain
 
         # This may cause pairs to get 'skipped'!
-        #if chain1 == chain2:
-        #    break
+        if chain1 == chain2:
+            break
 
         min_arb = data[arb_token]['min_arb']
 

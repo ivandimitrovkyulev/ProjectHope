@@ -1,44 +1,26 @@
 import os
 import json
-import requests
 
 from requests.exceptions import ReadTimeout
-from pymemcache.client.base import PooledClient
-from urllib3 import Retry
+from json.decoder import JSONDecodeError
 from aiohttp import (
     ClientSession,
-    ClientTimeout,
     ClientConnectorSSLError,
 )
 
-from json.decoder import JSONDecodeError
-from requests.adapters import HTTPAdapter
-
 from src.projecthope.blockchain.evm import EvmContract
-from src.projecthope.common.decorators import count_func_calls
 from src.projecthope.datatypes import (
     Token,
     Swap,
 )
+from src.projecthope.common.decorators import count_func_calls
 from src.projecthope.common.logger import log_error
-from src.projecthope.common.variables import network_ids
-
-
-# Create an EVM contract class
-contract = EvmContract()
-
-# Set up and configure requests session
-session = requests.Session()
-retry_strategy = Retry(total=2, status_forcelist=[429, 443, 500, 502, 503, 504])
-adapter = HTTPAdapter(max_retries=retry_strategy)
-session.mount("https://", adapter)
-session.mount("http://", adapter)
-
-# Configure aiohttp timeout
-timeout_class = ClientTimeout(total=3)
-
-# Set-up memcached client instance
-memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
+from src.projecthope.common.variables import (
+    network_ids,
+    memcache,
+    http_session,
+    timeout_class,
+)
 
 
 def get_ethusd_price(timeout: int = 3, expire_after: int = 720) -> float | None:
@@ -54,7 +36,7 @@ def get_ethusd_price(timeout: int = 3, expire_after: int = 720) -> float | None:
     if not eth_usdc_price:
         api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
         try:
-            response = session.get(api, timeout=timeout)
+            response = http_session.get(api, timeout=timeout)
         except ConnectionError or ReadTimeout as e:
             log_error.warning(f"'ConnectionError' - {e}")
             return None
@@ -89,6 +71,9 @@ def get_eth_fees(cost: dict, gas_amount: int, bridge_fees_eth: float = 0.005510,
     :param timeout: Maximum time to wait per GET request
     :return: Dictionary with updated cost data
     """
+    # Create an EVM contract class
+    contract = EvmContract()
+
     # Get ETH gas price from Web3. Result is cached for 1200 secs before querying again
     gas_price = contract.eth_gas_price()
     if gas_price:
@@ -136,9 +121,9 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                "toTokenAddress": to_token_addr,
                "amount": str(amount)}
 
-    async with ClientSession(timeout=timeout_class) as http_session:
+    async with ClientSession(timeout=timeout_class) as async_http_session:
         try:
-            async with http_session.get(api, ssl=False, params=payload) as response:
+            async with async_http_session.get(api, ssl=False, params=payload) as response:
 
                 try:
                     data = json.loads(await response.text())

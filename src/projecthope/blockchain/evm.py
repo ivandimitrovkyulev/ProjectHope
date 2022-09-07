@@ -2,7 +2,6 @@ import os
 
 from dotenv import load_dotenv
 from typing import Any
-from pymemcache.client.base import PooledClient
 
 from web3.contract import Contract
 from web3.gas_strategies.time_based import construct_time_based_gas_price_strategy
@@ -11,10 +10,7 @@ from web3 import (
     middleware,
 )
 from src.projecthope.common.logger import log_error
-
-
-# Set-up memcached client instance
-memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
+from src.projecthope.common.variables import memcache
 
 
 class EvmContract:

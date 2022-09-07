@@ -1,22 +1,51 @@
-from binance.spot import Spot
-from binance.error import ClientError
-
+import ast
+import ssl
 from typing import List
 
-from src.projecthope.common.logger import log_error
+from websocket import WebSocketApp
+from binance.error import ClientError
+
 from src.projecthope.datatypes import (
     Token,
     Swap,
 )
+from src.projecthope.common.logger import log_error
 from src.projecthope.common.variables import (
-    BINANCE_KEY,
-    BINANCE_SECRET,
+    binance_client,
     network_names,
 )
 
 
-# Initialise client class
-client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
+class BinanceDepthSocket:
+
+    def __init__(self, trading_symbol: str, update_speed: int = 1000):
+        self.trading_symbol = trading_symbol.lower()
+        self.update_speed = update_speed
+        self.url = f"wss://stream.binance.us:9443/ws/{self.trading_symbol}@depth@{self.update_speed}ms"
+        self.socket = WebSocketApp(self.url, on_open=self.on_open, on_message=self.on_message,
+                                   on_error=self.on_error, on_close=self.on_close)
+
+    @staticmethod
+    def on_error(socket, error):
+        print(f">>> Error: {error}, {socket.url}")
+
+    @staticmethod
+    def on_close(socket, close_status_code, close_msg):
+        print(f">>> Closed connection: {socket.url}\n"
+              f"Status code: {close_status_code}\n"
+              f"Closing msg: {close_msg}")
+
+    @staticmethod
+    def on_open(socket):
+        print(f">>> Opened connection: {socket.url}")
+
+    @staticmethod
+    def on_message(socket, message):
+        data = ast.literal_eval(message)
+        print(data)
+
+    def run_forever(self):
+        self.socket.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
 
 def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, book_limit: int = 1000) -> List[Swap]:
@@ -38,7 +67,7 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, book_limit: int =
     pair: str = (token_a + token_b).upper()
 
     try:
-        order_book = client.depth(symbol=pair, limit=book_limit)
+        order_book = binance_client.depth(symbol=pair, limit=book_limit)
     except ClientError as e:
         log_error.warning(f"BinanceCEX API, ClientError: {e}. Pair: {pair}, amounts: {b_amounts}")
         return []
@@ -109,7 +138,7 @@ def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, book_limit: int =
     pair: str = (token_a + token_b).upper()
 
     try:
-        order_book = client.depth(symbol=pair, limit=book_limit)
+        order_book = binance_client.depth(symbol=pair, limit=book_limit)
     except ClientError:
         log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {pair}, amount: {a_amounts}")
         return []
