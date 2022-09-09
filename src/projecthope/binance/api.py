@@ -1,9 +1,12 @@
 import ast
 import ssl
+import json
 from typing import List
+from pprint import pprint
+from collections import deque
 
+from requests.exceptions import ReadTimeout
 from websocket import WebSocketApp
-from binance.error import ClientError
 
 from src.projecthope.datatypes import (
     Token,
@@ -11,8 +14,9 @@ from src.projecthope.datatypes import (
 )
 from src.projecthope.common.logger import log_error
 from src.projecthope.common.variables import (
-    binance_client,
     network_names,
+    memcache,
+    http_session,
 )
 
 
@@ -24,31 +28,61 @@ class BinanceDepthSocket:
         self.url = f"wss://stream.binance.us:9443/ws/{self.trading_symbol}@depth@{self.update_speed}ms"
         self.socket = WebSocketApp(self.url, on_open=self.on_open, on_message=self.on_message,
                                    on_error=self.on_error, on_close=self.on_close)
+        self.last_update = self.get_last_update_id(self.trading_symbol)
+
+    @staticmethod
+    def get_last_update_id(trading_symbol: str, limit: int = 1000, timeout: int = 5) -> int | None:
+        url = f"https://api.binance.us/api/v3/depth?symbol={trading_symbol.upper()}&limit={limit}"
+        try:
+            response = http_session.get(url, timeout=timeout)
+        except ConnectionError or ReadTimeout as e:
+            log_error.warning(f"'ConnectionError' {url} - {e}")
+            return None
+
+        try:
+            data = json.loads(response.content)
+            last_update_id = data['lastUpdateId']
+
+            return int(last_update_id)
+
+        except Exception as e:
+            log_error.warning(f"Error getting 'lastUpdateId' from {url} - {e}")
 
     @staticmethod
     def on_error(socket, error):
-        print(f">>> Error: {error}, {socket.url}")
+        message = f">>> Error: {error}, {socket.url}"
+        log_error.warning(message)
+        print(message)
 
     @staticmethod
     def on_close(socket, close_status_code, close_msg):
-        print(f">>> Closed connection: {socket.url}\n"
-              f"Status code: {close_status_code}\n"
-              f"Closing msg: {close_msg}")
+        message = f">>> Closed connection: {socket.url}\n" \
+                  f"Status code: {close_status_code}\n" \
+                  f"Closing msg: {close_msg}"
+        log_error.warning(message)
+        print(message)
 
     @staticmethod
     def on_open(socket):
-        print(f">>> Opened connection: {socket.url}")
+        message = f">>> Opened connection: {socket.url}"
+        log_error.warning(message)
+        print(message)
 
-    @staticmethod
-    def on_message(socket, message):
+    def on_message(self, socket, message):
         data = ast.literal_eval(message)
-        print(data)
+        first_update = int(data['U'])
+        final_update = int(data['u'])
+
+        if final_update <= self.last_update:
+            return
+        elif final_update >= self.last_update + 1 >= first_update:
+            pprint(data)
 
     def run_forever(self):
         self.socket.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
 
-def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, book_limit: int = 1000) -> List[Swap]:
+def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, asks: list) -> List[Swap]:
     """
     Given pair 'AB', by selling amount 'B', calculate the received amount of 'A'
     Based on Binance's order book asks. Returns none if trading pair not available.
@@ -56,21 +90,13 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, book_limit: int =
     :param token_a: Name of Token A
     :param token_b: Name of Token B
     :param b_amounts: List of amounts of token 'B' to swap in
-    :param book_limit: Number of asks to check against in the order book
+    :param asks: List of asks
     :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
-    if type(b_amounts) != list or type(b_amounts) != tuple:
-        b_amounts = list(b_amounts)
+    b_amounts = list(b_amounts)
 
     network_name: str = "BinanceCEX"
     network_id: str = network_names[network_name]
-    pair: str = (token_a + token_b).upper()
-
-    try:
-        order_book = binance_client.depth(symbol=pair, limit=book_limit)
-    except ClientError as e:
-        log_error.warning(f"BinanceCEX API, ClientError: {e}. Pair: {pair}, amounts: {b_amounts}")
-        return []
 
     all_swaps: list = []
     for b_amount in b_amounts:
@@ -83,7 +109,7 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, book_limit: int =
 
         a_bought = 0
         # asks are when they want to sell sth -> they are ASKING for the PRICE
-        for item in order_book['asks']:
+        for item in asks:
             # getting the amounts at price closest to the origin
             price = float(item[0])
             quantity = float(item[1])
@@ -119,29 +145,21 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, book_limit: int =
     return all_swaps
 
 
-def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, book_limit: int = 1000) -> List[Swap]:
+def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, bids: list) -> List[Swap]:
     """
     Given pair 'AB', by selling amount 'A', calculate the received amount of 'B'
-    Based on Binance's order book asks. Returns none if trading pair not available.
+    Based on Binance's order book bids. Returns none if trading pair not available.
 
     :param token_a: Name of Token A
     :param token_b: Name of Token B
     :param a_amounts: List of amounts of token 'A' to swap in
-    :param book_limit: Number of asks to check against in the order book
+    :param bids: List of bids
     :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
-    if type(a_amounts) != list or type(a_amounts) != tuple:
-        a_amounts = list(a_amounts)
+    a_amounts = list(a_amounts)
 
     network_name: str = "BinanceCEX"
     network_id: str = network_names[network_name]
-    pair: str = (token_a + token_b).upper()
-
-    try:
-        order_book = binance_client.depth(symbol=pair, limit=book_limit)
-    except ClientError:
-        log_error.warning(f"BinanceCEX API, ClientError: Invalid query for pair: {pair}, amount: {a_amounts}")
-        return []
 
     all_swaps: list = []
     for a_amount in a_amounts:
@@ -155,7 +173,7 @@ def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, book_limit: int =
         b_bought = 0
         a_sold = 0
         # bids are when they want to BUY sth -> they are BIDDING at the PRICE
-        for item in order_book['bids']:
+        for item in bids:
 
             price = float(item[0])
             quantity = float(item[1])

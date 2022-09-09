@@ -10,7 +10,6 @@ from aiohttp import ClientTimeout
 from requests import Session
 from requests.adapters import HTTPAdapter
 
-from binance.spot import Spot
 from pymemcache.client.base import PooledClient
 
 
@@ -23,8 +22,6 @@ CHAT_ID_DEBUG = os.getenv("CHAT_ID_DEBUG")
 BINANCE_KEY = os.getenv("BINANCE_KEY")
 BINANCE_SECRET = os.getenv("BINANCE_SECRET")
 
-# Initialise binance client class
-binance_client = Spot(key=BINANCE_KEY, secret=BINANCE_SECRET)
 
 # Set-up memcached client instance
 memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
