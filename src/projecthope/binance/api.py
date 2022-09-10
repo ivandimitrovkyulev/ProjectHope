@@ -2,7 +2,6 @@ import ast
 import ssl
 import json
 from typing import List
-from pprint import pprint
 from collections import deque
 
 from requests.exceptions import ReadTimeout
@@ -28,10 +27,13 @@ class BinanceDepthSocket:
         self.url = f"wss://stream.binance.us:9443/ws/{self.trading_symbol}@depth@{self.update_speed}ms"
         self.socket = WebSocketApp(self.url, on_open=self.on_open, on_message=self.on_message,
                                    on_error=self.on_error, on_close=self.on_close)
-        self.last_update = self.get_last_update_id(self.trading_symbol)
+        self.pair_depth = self.get_pair_depth(self.trading_symbol)
+        self._previous_final_update = 0
+        self.book_asks = deque(maxlen=1000)
+        self.book_bids = deque(maxlen=1000)
 
     @staticmethod
-    def get_last_update_id(trading_symbol: str, limit: int = 1000, timeout: int = 5) -> int | None:
+    def get_pair_depth(trading_symbol: str, limit: int = 1000, timeout: int = 5) -> dict | None:
         url = f"https://api.binance.us/api/v3/depth?symbol={trading_symbol.upper()}&limit={limit}"
         try:
             response = http_session.get(url, timeout=timeout)
@@ -41,9 +43,12 @@ class BinanceDepthSocket:
 
         try:
             data = json.loads(response.content)
-            last_update_id = data['lastUpdateId']
 
-            return int(last_update_id)
+            if response.status_code != 200:
+                log_error.critical(f"'get_pair_depth' error - {data} - {url}")
+                return None
+
+            return data
 
         except Exception as e:
             log_error.warning(f"Error getting 'lastUpdateId' from {url} - {e}")
@@ -73,10 +78,17 @@ class BinanceDepthSocket:
         first_update = int(data['U'])
         final_update = int(data['u'])
 
-        if final_update <= self.last_update:
-            return
-        elif final_update >= self.last_update + 1 >= first_update:
-            pprint(data)
+        if self.pair_depth:
+            if final_update <= self.pair_depth['lastUpdateId']:
+                return
+
+        if first_update == self._previous_final_update + 1:
+            print(data)
+            #self.order_book.extend([data])
+        else:
+            log_error.warning(f"BinanceSocketError - id inequality - {socket}")
+
+        self._previous_final_update = int(data['u'])
 
     def run_forever(self):
         self.socket.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})

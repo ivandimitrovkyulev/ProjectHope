@@ -65,7 +65,7 @@ container_name = sys.argv[-1]
 register(telegram_send_message, f"⚠️ <b>{container_name.upper()}: container_check.py</b> stopped!")
 
 wait_time = 15 * 60  # 15 mins (15 * 60 secs) sleep time in each loop
-max_time_diff = 15 * 60  # 15 mins max difference(in secs) between current and script's last timestamp
+max_time_diff = 5 * 60  # 5 mins max difference(in secs) between current and script's last timestamp
 update_time = 12  # 12 hour check 'OK' message to Telegram to notify container_check is still running
 
 # Sleep before starting the script - 15 mins
@@ -88,11 +88,15 @@ while True:
     # Calculate time difference in seconds
     time_diff = (now_time - script_time).seconds
 
+    # Calculate last loop execution time
+    temp = re.split(r"[ ]?sec[s]?", output)[0]
+    loop_time = float(re.split(r" ", temp)[-1])
+
     # Alert if container has stopped or is lagging behind
     if time_diff > max_time_diff:
         timestamp = datetime.datetime.now().astimezone().strftime(time_format)
         message = f"<b>⚠️ {container_name.upper()}</b> - {timestamp}\n" \
-                  f"<b>{program_name}</b> stopped!\n"
+                  f"<b>{program_name}</b> stopped! Last loop execution: {loop_time:,.1f} secs.\n"
 
         # Send Telegram message in Debug Chat and Break
         telegram_send_message(message)
@@ -101,8 +105,6 @@ while True:
 
     # Alert every 12hours if the script is still running
     if now_time - program_start_time > datetime.timedelta(hours=update_time):
-        temp = re.split(r"[ ]?sec[s]?", output)[0]
-        loop_time = float(re.split(r" ", temp)[-1])
         message = f"✅ {container_name.upper()} is running({update_time}h updates). " \
                   f"Last loop execution: {loop_time:,.1f} secs."
 
