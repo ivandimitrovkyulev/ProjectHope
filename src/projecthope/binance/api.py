@@ -2,7 +2,6 @@ import ast
 import ssl
 import json
 from typing import List
-from collections import deque
 
 from requests.exceptions import ReadTimeout
 from websocket import WebSocketApp
@@ -21,16 +20,12 @@ from src.projecthope.common.variables import (
 
 class BinanceDepthSocket:
 
-    def __init__(self, trading_symbol: str, update_speed: int = 1000):
-        self.trading_symbol = trading_symbol.lower()
-        self.update_speed = update_speed
-        self.url = f"wss://stream.binance.us:9443/ws/{self.trading_symbol}@depth@{self.update_speed}ms"
+    def __init__(self, symbols: List[str], level: int = 20, update_speed: int = 1000):
+        self.symbols = [f"{symbol.lower()}@depth{level}@{update_speed}ms" for symbol in symbols]
+        self.url = f"wss://stream.binance.com:9443/stream?streams={'/'.join(self.symbols)}"
         self.socket = WebSocketApp(self.url, on_open=self.on_open, on_message=self.on_message,
                                    on_error=self.on_error, on_close=self.on_close)
-        self.pair_depth = self.get_pair_depth(self.trading_symbol)
-        self._previous_final_update = 0
-        self.book_asks = deque(maxlen=1000)
-        self.book_bids = deque(maxlen=1000)
+        self._last_update_id = {symbol: 0 for symbol in self.symbols}
 
     @staticmethod
     def get_pair_depth(trading_symbol: str, limit: int = 1000, timeout: int = 5) -> dict | None:
@@ -75,20 +70,14 @@ class BinanceDepthSocket:
 
     def on_message(self, socket, message):
         data = ast.literal_eval(message)
-        first_update = int(data['U'])
-        final_update = int(data['u'])
+        stream_name: str = data['stream']
+        stream_data = data['data']
+        update_id = data['data']['lastUpdateId']
 
-        if self.pair_depth:
-            if final_update <= self.pair_depth['lastUpdateId']:
-                return
+        if update_id >= self._last_update_id[stream_name]:
+            memcache.set(key=stream_name.split('@')[0], value=stream_data, expire=30)
 
-        if first_update == self._previous_final_update + 1:
-            print(data)
-            #self.order_book.extend([data])
-        else:
-            log_error.warning(f"BinanceSocketError - id inequality - {socket}")
-
-        self._previous_final_update = int(data['u'])
+        self._last_update_id[stream_name] = update_id
 
     def run_forever(self):
         self.socket.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
