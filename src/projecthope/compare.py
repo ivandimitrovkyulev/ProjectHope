@@ -104,6 +104,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     asks = asks.decode("utf-8")
     binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts, asks)
     swaps_ab = list(binance_swaps_ab) + list(results)
+    print(swaps_ab)
 
     # Get the maximum Swap for each range respectively
     max_swaps_ab = max_swaps(swaps_ab, amounts)

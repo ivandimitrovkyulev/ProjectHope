@@ -8,10 +8,12 @@ from time import (
     sleep,
     perf_counter,
 )
+from multiprocessing import Process
 from concurrent.futures import ThreadPoolExecutor
 
 from src.projecthope.compare import alert_arb
 from src.projecthope.one_inch.api import get_swapout
+from src.projecthope.binance.api import start_binance_streams
 
 from src.projecthope.common.exceptions import exit_handler
 from src.projecthope.common.helpers import print_start_message
@@ -25,6 +27,38 @@ from src.projecthope.common.variables import (
 
 if len(sys.argv) != 2:
     sys.exit(f"Usage: python3 {os.path.basename(__file__)} <input_file>\n")
+
+
+def arb_screener(args: list) -> None:
+    """
+    Main function that constantly screens for arbitrage between 1inch and binance trading pairs.
+    :param args: Arguments list to pass
+    """
+    loop_counter = 1
+    total_calls = 0
+    while True:
+        start = perf_counter()
+
+        with ThreadPoolExecutor(max_workers=len(args)) as executor:
+            results = executor.map(lambda p: alert_arb(*p), args, timeout=10)
+
+        try:
+            for result in results:
+                if result:
+                    log_error.info(result)
+
+        except Exception as e:
+            log_error.info(e)
+
+        sleep(sleep_time)
+
+        time_stamp = datetime.now().astimezone().strftime(time_format)
+        print(f"{time_stamp}: Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs. "
+              f"1inch API calls: {abs(total_calls - get_swapout.calls)}")
+
+        total_calls = get_swapout.calls
+        loop_counter += 1
+
 
 # Send telegram debug message if program terminates
 program_name = os.path.abspath(os.path.basename(__file__))
@@ -42,34 +76,17 @@ arb_tokens = [token for token in info['coins'] if token not in base_tokens]
 
 # Start Binance WebSockets for traiding pairs
 trading_pairs = [f"{token}{base_token}" for token in arb_tokens]
-print(trading_pairs)
-os.system(f'python3 binance_socket.py "{str(trading_pairs)}"')
 
 # Create all Base-Arbitrage token pairs
 arguments = [[info, base_token, arb_token] for arb_token in arb_tokens]
 
 
-loop_counter = 1
-total_calls = 0
-while True:
-    start = perf_counter()
+if __name__ == "__main__":
+    binance_stream = Process(target=start_binance_streams, args=(trading_pairs, ))
+    main_screener = Process(target=arb_screener, args=(arguments, ))
 
-    with ThreadPoolExecutor(max_workers=len(arguments)) as executor:
-        results = executor.map(lambda p: alert_arb(*p), arguments, timeout=10)
+    binance_stream.start()
+    main_screener.start()
 
-    try:
-        for result in results:
-            if result:
-                log_error.info(result)
-
-    except Exception as e:
-        log_error.info(e)
-
-    sleep(15)
-
-    timestamp = datetime.now().astimezone().strftime(time_format)
-    print(f"{timestamp}: Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs. "
-          f"1inch API calls: {abs(total_calls - get_swapout.calls)}")
-
-    total_calls = get_swapout.calls
-    loop_counter += 1
+    binance_stream.join()
+    main_screener.join()

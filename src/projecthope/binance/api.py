@@ -27,7 +27,7 @@ class BinanceDepthSocket:
         :param update_speed: Real time update speed, 1000ms or 100ms
         """
         self.symbols = [f"{symbol.lower()}@depth{level}@{update_speed}ms" for symbol in symbols]
-        self._last_update_id = {symbol.lower(): 0 for symbol in symbols}
+        self._last_update_id = {symbol.upper(): 0 for symbol in symbols}
 
         self.url = f"wss://stream.binance.com:9443/stream?streams={'/'.join(self.symbols)}"
         self.socket = WebSocketApp(self.url, on_open=self.on_open, on_message=self.on_message,
@@ -82,7 +82,6 @@ class BinanceDepthSocket:
     def on_open(socket):
         """Websocket on_open method handler."""
         message = f">>> Opened connection: {socket.url}"
-        log_error.warning(message)
         print(message)
         print(f"Started listening to streams...")
 
@@ -90,8 +89,7 @@ class BinanceDepthSocket:
         """Websocket on_message method handler."""
         data = ast.literal_eval(message)  # Convert data into a dict
         try:
-            stream_name: str = data['stream']
-            stream_name = stream_name.split('@')[0].lower()  # Get the trading pair part only, eg. 'ETHUSDT'
+            stream_name: str = data['stream'].split('@')[0].upper()  # Get the trading pair part only, eg. 'ETHUSDT'
             stream_data = data['data']
             update_id = data['data']['lastUpdateId']
 
@@ -229,3 +227,9 @@ def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, bids: list) -> Li
         all_swaps.append(binance_swap)
 
     return all_swaps
+
+
+def start_binance_streams(trading_pairs):
+    # Initialise BinanceDepthSocket with trading pairs
+    binance_socket = BinanceDepthSocket(trading_pairs)
+    binance_socket.run_forever()
