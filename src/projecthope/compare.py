@@ -17,6 +17,7 @@ from src.projecthope.common.helpers import (
 from src.projecthope.common.variables import (
     time_format,
     base_tokens,
+    memcache,
 )
 
 
@@ -98,8 +99,10 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     args_ab, amounts = parse_args_1inch(data, base_token, arb_token)
     results = asyncio.run(gather_funcs(get_swapout, args_ab))
 
-    # Get Binance CEX prices and a combine with all swaps
-    binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts)
+    # Get Binance CEX prices and combine with all swaps
+    asks = memcache.get(key=f"{arb_token}{base_token}", default='None')
+    asks = asks.decode("utf-8")
+    binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts, asks)
     swaps_ab = list(binance_swaps_ab) + list(results)
 
     # Get the maximum Swap for each range respectively
@@ -118,7 +121,9 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
         results = asyncio.run(gather_funcs(get_swapout, args_ba))
 
         # Get Binance CEX prices and a combine with all swaps
-        binance_swaps_ba = trade_a_for_b(arb_token, base_token, [max_amount_ab])
+        bids = memcache.get(key=f"{arb_token}{base_token}", default='None')
+        bids = asks.decode("utf-8")
+        binance_swaps_ba = trade_a_for_b(arb_token, base_token, [max_amount_ab], bids)
         swaps_ba = list(binance_swaps_ba) + list(results)
 
         # Get the maximum swap out - should be list of only 1 item!
@@ -135,12 +140,12 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
     """
     Alerts via Telegram for arbitrage between 2 tokens.
 
-    :param data: Input dictionary data
+    :param data: Input dictionary data with coins
     :param base_token: Name of Base token being swapped in
     :param arb_token: Name of token being Arbitraged
     """
     # Get arbitrage data pairs for each amount swapped
-    max_swap_pairs = compare_swaps(data, base_token, arb_token)
+    max_swap_pairs = compare_swaps(data['coins'], base_token, arb_token)
 
     # If max_swap_pairs is an empty list - return
     if not max_swap_pairs:
@@ -158,7 +163,7 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
         if chain1 == chain2:
             break
 
-        min_arb = data[arb_token]['min_arb']
+        min_arb = data['coins'][arb_token]['min_arb']
 
         base_swap_in = swap_ab.from_token.amount
         base_swap_out = swap_ba.to_token.amount

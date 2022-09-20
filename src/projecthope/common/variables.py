@@ -6,9 +6,11 @@ import os
 from re import compile
 from urllib3 import Retry
 from dotenv import load_dotenv
+
 from aiohttp import ClientTimeout
 from requests import Session
 from requests.adapters import HTTPAdapter
+from fake_useragent import UserAgent
 
 from pymemcache.client.base import PooledClient
 
@@ -28,6 +30,8 @@ memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
 
 # Set up and configure requests session
 http_session = Session()
+http_session.proxies = {'http': 'socks5h://localhost:9050', 'https': 'socks5h://localhost:9050'}
+# headers = {"User_Agent": UserAgent(verify_ssl=False).random}
 retry_strategy = Retry(total=2, status_forcelist=[429, 443, 500, 502, 503, 504])
 adapter = HTTPAdapter(max_retries=retry_strategy)
 http_session.mount("https://", adapter)

@@ -21,14 +21,28 @@ from src.projecthope.common.variables import (
 class BinanceDepthSocket:
 
     def __init__(self, symbols: List[str], level: int = 20, update_speed: int = 1000):
+        """
+        :param symbols: List of trading pairs, eg. ['ETHUSDT', 'CVXUSDT']
+        :param level: Binance socket depth level, eg. 5, 10, 20
+        :param update_speed: Real time update speed, 1000ms or 100ms
+        """
         self.symbols = [f"{symbol.lower()}@depth{level}@{update_speed}ms" for symbol in symbols]
+        self._last_update_id = {symbol.lower(): 0 for symbol in symbols}
+
         self.url = f"wss://stream.binance.com:9443/stream?streams={'/'.join(self.symbols)}"
         self.socket = WebSocketApp(self.url, on_open=self.on_open, on_message=self.on_message,
                                    on_error=self.on_error, on_close=self.on_close)
-        self._last_update_id = {symbol: 0 for symbol in self.symbols}
 
     @staticmethod
     def get_pair_depth(trading_symbol: str, limit: int = 1000, timeout: int = 5) -> dict | None:
+        """
+        Get the order book depth for a given trading pair.
+
+        :param trading_symbol: Trading pair, eg. 'ETHUSDT'
+        :param limit: Depth limit
+        :param timeout: Maximum wait time for request
+        :returns: Dictionary of response data
+        """
         url = f"https://api.binance.us/api/v3/depth?symbol={trading_symbol.upper()}&limit={limit}"
         try:
             response = http_session.get(url, timeout=timeout)
@@ -50,36 +64,47 @@ class BinanceDepthSocket:
 
     @staticmethod
     def on_error(socket, error):
+        """Websocket on_error method handler."""
         message = f">>> Error: {error}, {socket.url}"
         log_error.warning(message)
         print(message)
 
     @staticmethod
     def on_close(socket, close_status_code, close_msg):
-        message = f">>> Closed connection: {socket.url}\n" \
-                  f"Status code: {close_status_code}\n" \
-                  f"Closing msg: {close_msg}"
+        """Websocket on_close method handler."""
+        message = f">>> Closed connection: {socket.url}. " \
+                  f"Status code: {close_status_code}. " \
+                  f"Closing msg: {close_msg}."
         log_error.warning(message)
         print(message)
 
     @staticmethod
     def on_open(socket):
+        """Websocket on_open method handler."""
         message = f">>> Opened connection: {socket.url}"
         log_error.warning(message)
         print(message)
+        print(f"Started listening to streams...")
 
     def on_message(self, socket, message):
-        data = ast.literal_eval(message)
-        stream_name: str = data['stream']
-        stream_data = data['data']
-        update_id = data['data']['lastUpdateId']
+        """Websocket on_message method handler."""
+        data = ast.literal_eval(message)  # Convert data into a dict
+        try:
+            stream_name: str = data['stream']
+            stream_name = stream_name.split('@')[0].lower()  # Get the trading pair part only, eg. 'ETHUSDT'
+            stream_data = data['data']
+            update_id = data['data']['lastUpdateId']
 
-        if update_id >= self._last_update_id[stream_name]:
-            memcache.set(key=stream_name.split('@')[0], value=stream_data, expire=30)
+            if update_id >= self._last_update_id[stream_name]:
+                memcache.set(key=stream_name, value=stream_data, expire=30)
 
-        self._last_update_id[stream_name] = update_id
+            self._last_update_id[stream_name] = update_id  # Save last id for each stream in dict
+
+        except Exception as e:
+            log_error.warning(f"Error getting data from websocket stream - {socket} - {e}")
 
     def run_forever(self):
+        """Start screening for messages from websocket and handle with on_message method"""
         self.socket.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
 
@@ -91,7 +116,7 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, asks: list) -> Li
     :param token_a: Name of Token A
     :param token_b: Name of Token B
     :param b_amounts: List of amounts of token 'B' to swap in
-    :param asks: List of asks
+    :param asks: List of order book asks
     :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
     b_amounts = list(b_amounts)
@@ -154,7 +179,7 @@ def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, bids: list) -> Li
     :param token_a: Name of Token A
     :param token_b: Name of Token B
     :param a_amounts: List of amounts of token 'A' to swap in
-    :param bids: List of bids
+    :param bids: List of order book bids
     :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
     a_amounts = list(a_amounts)

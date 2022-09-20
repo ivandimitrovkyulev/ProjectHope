@@ -103,22 +103,23 @@ def print_start_message(info: dict, base_token: str, timestamp: str) -> None:
 
     print(f"{timestamp} - Started screening the following configurations:")
 
-    arb_tokens = [token for token in info if token not in base_tokens]
+    arb_tokens = [token for token in info['coins']
+                  if token not in base_tokens]
 
     message = []
     for i, arb_token in enumerate(arb_tokens):
 
-        arb_token_networks = [net for net in info[arb_token]['networks']
-                              if net in info[base_token]['networks']]
+        arb_token_networks = [netw for netw in info['coins'][arb_token]['networks']
+                              if netw in info['coins'][base_token]['networks']]
 
-        ranges = info[arb_token]['swap_amount']
+        ranges = info['coins'][arb_token]['swap_amount']
         swap_ranges = [f"{int((swap / 1000)):,}k" if swap > 1000 else swap for swap in ranges]
 
         message.append([base_token,
                         arb_token,
                         ", ".join(swap_ranges),
                         ", ".join(arb_token_networks),
-                        info[arb_token]['min_arb'], ])
+                        info['coins'][arb_token]['min_arb'], ])
 
     columns = ["Base\nToken", "Arb\nToken", "Swap Amounts", "On networks", "Min. Arb."]
 

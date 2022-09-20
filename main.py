@@ -33,23 +33,26 @@ register(exit_handler, program_name)
 # Fetch variables
 info: dict = json.loads(sys.argv[-1])
 sleep_time, base_token = info["settings"].values()
-info.pop('settings')
 
 timestamp = datetime.now().astimezone().strftime(time_format)
-
-arb_tokens = [token for token in info if token not in base_tokens]
-
 print_start_message(info, base_token, timestamp)
 telegram_send_message(f"✅ PROJECTHOPE has started.")
+
+arb_tokens = [token for token in info['coins'] if token not in base_tokens]
+
+# Start Binance WebSockets for traiding pairs
+trading_pairs = [f"{token}{base_token}" for token in arb_tokens]
+print(trading_pairs)
+os.system(f'python3 binance_socket.py "{str(trading_pairs)}"')
+
+# Create all Base-Arbitrage token pairs
+arguments = [[info, base_token, arb_token] for arb_token in arb_tokens]
 
 
 loop_counter = 1
 total_calls = 0
 while True:
     start = perf_counter()
-
-    # Create all Base-Arbitrage token pairs
-    arguments = [[info, base_token, arb_token] for arb_token in arb_tokens]
 
     with ThreadPoolExecutor(max_workers=len(arguments)) as executor:
         results = executor.map(lambda p: alert_arb(*p), arguments, timeout=10)
@@ -67,5 +70,6 @@ while True:
     timestamp = datetime.now().astimezone().strftime(time_format)
     print(f"{timestamp}: Loop {loop_counter} executed in {(perf_counter() - start):,.2f} secs. "
           f"1inch API calls: {abs(total_calls - get_swapout.calls)}")
+
     total_calls = get_swapout.calls
     loop_counter += 1

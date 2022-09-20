@@ -123,7 +123,7 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
 
     async with ClientSession(timeout=timeout_class) as async_http_session:
         try:
-            async with async_http_session.get(api, ssl=False, params=payload) as response:
+            async with async_http_session.get(api, ssl=False, params=payload, timeout=timeout) as response:
 
                 try:
                     data = json.loads(await response.text())
@@ -132,7 +132,7 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                     return None
 
                 if response.status != 200:
-                    log_error.warning(f"'ResponseError' {response.status}, {data['error']}, {data['description']} - "
+                    log_error.warning(f"'ResponseError' {response.status}, {data['error']} - "
                                       f"{network_name}, {amount_float} {from_token_name} -> {to_token_name}")
                     return None
 
@@ -149,7 +149,7 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
 
     # Calculate fees on Ethereum only and add to cost dictionary
     if include_fees and int(network_id) == 1:
-        get_eth_fees(cost, gas_amount, timeout=timeout)
+        get_eth_fees(cost, gas_amount, timeout=3)
 
     from_token = Token(from_token_name, amount_float, from_token_decimal)
     to_token = Token(to_token_name, swap_out_float, to_token_decimal)

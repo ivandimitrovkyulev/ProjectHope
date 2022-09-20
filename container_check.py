@@ -64,7 +64,7 @@ program_start_time = datetime.datetime.now()
 container_name = sys.argv[-1]
 register(telegram_send_message, f"⚠️ <b>{container_name.upper()}: container_check.py</b> stopped!")
 
-wait_time = 15 * 60  # 15 mins (15 * 60 secs) sleep time in each loop
+wait_time = 5 * 60  # 5 mins (5 * 60 secs) sleep time in each loop
 max_time_diff = 5 * 60  # 5 mins max difference(in secs) between current and script's last timestamp
 update_time = 12  # 12 hour check 'OK' message to Telegram to notify container_check is still running
 
