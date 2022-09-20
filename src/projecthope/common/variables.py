@@ -30,7 +30,7 @@ memcache = PooledClient(('localhost', 11211), connect_timeout=3, timeout=3)
 
 # Set up and configure requests session
 http_session = Session()
-http_session.proxies = {'http': 'socks5h://localhost:9050', 'https': 'socks5h://localhost:9050'}
+# http_session.proxies = {'http': 'socks5h://localhost:9050', 'https': 'socks5h://localhost:9050'}
 # headers = {"User_Agent": UserAgent(verify_ssl=False).random}
 retry_strategy = Retry(total=2, status_forcelist=[429, 443, 500, 502, 503, 504])
 adapter = HTTPAdapter(max_retries=retry_strategy)

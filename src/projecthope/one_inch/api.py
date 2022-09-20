@@ -49,7 +49,7 @@ def get_ethusd_price(timeout: int = 3, expire_after: int = 720) -> float | None:
 
         if int(data['status']) == 1:
             price = float(data['result']['ethusd'])
-            memcache.set(key="eth_usdc_price", value=price, expire=expire_after)
+            memcache.set(key="eth_usdc_price", value=price, expire=expire_after,)
 
             return price
 

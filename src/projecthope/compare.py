@@ -1,4 +1,6 @@
+import ast
 import asyncio
+
 from datetime import datetime
 from typing import List
 
@@ -100,11 +102,9 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     results = asyncio.run(gather_funcs(get_swapout, args_ab))
 
     # Get Binance CEX prices and combine with all swaps
-    asks = memcache.get(key=f"{arb_token}{base_token}", default='None')
-    asks = asks.decode("utf-8")
+    asks = memcache.get(key=f"{arb_token}{base_token}", default=None)
     binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts, asks)
     swaps_ab = list(binance_swaps_ab) + list(results)
-    print(swaps_ab)
 
     # Get the maximum Swap for each range respectively
     max_swaps_ab = max_swaps(swaps_ab, amounts)
@@ -122,8 +122,7 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
         results = asyncio.run(gather_funcs(get_swapout, args_ba))
 
         # Get Binance CEX prices and a combine with all swaps
-        bids = memcache.get(key=f"{arb_token}{base_token}", default='None')
-        bids = asks.decode("utf-8")
+        bids = memcache.get(key=f"{arb_token}{base_token}", default=None)
         binance_swaps_ba = trade_a_for_b(arb_token, base_token, [max_amount_ab], bids)
         swaps_ba = list(binance_swaps_ba) + list(results)
 

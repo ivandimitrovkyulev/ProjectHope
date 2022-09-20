@@ -20,7 +20,7 @@ from src.projecthope.common.variables import (
 
 class BinanceDepthSocket:
 
-    def __init__(self, symbols: List[str], level: int = 20, update_speed: int = 1000):
+    def __init__(self, symbols: List[str], level: int = 20, update_speed: int = 1000, debug: bool = False):
         """
         :param symbols: List of trading pairs, eg. ['ETHUSDT', 'CVXUSDT']
         :param level: Binance socket depth level, eg. 5, 10, 20
@@ -28,6 +28,7 @@ class BinanceDepthSocket:
         """
         self.symbols = [f"{symbol.lower()}@depth{level}@{update_speed}ms" for symbol in symbols]
         self._last_update_id = {symbol.upper(): 0 for symbol in symbols}
+        self.debug = debug
 
         self.url = f"wss://stream.binance.com:9443/stream?streams={'/'.join(self.symbols)}"
         self.socket = WebSocketApp(self.url, on_open=self.on_open, on_message=self.on_message,
@@ -93,6 +94,9 @@ class BinanceDepthSocket:
             stream_data = data['data']
             update_id = data['data']['lastUpdateId']
 
+            if self.debug:
+                print(stream_data)
+
             if update_id >= self._last_update_id[stream_name]:
                 memcache.set(key=stream_name, value=stream_data, expire=30)
 
@@ -106,7 +110,7 @@ class BinanceDepthSocket:
         self.socket.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
 
-def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, asks: list) -> List[Swap]:
+def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, order_book: bytes) -> List[Swap]:
     """
     Given pair 'AB', by selling amount 'B', calculate the received amount of 'A'
     Based on Binance's order book asks. Returns none if trading pair not available.
@@ -114,15 +118,21 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, asks: list) -> Li
     :param token_a: Name of Token A
     :param token_b: Name of Token B
     :param b_amounts: List of amounts of token 'B' to swap in
-    :param asks: List of order book asks
+    :param order_book: Raw bytes string order book data
     :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
+    all_swaps: list = []
+    if not order_book:
+        return all_swaps
+
+    order_book = ast.literal_eval(order_book.decode("utf-8"))  # Decode bytes string into a dictionary
+    asks = order_book['asks']
+
     b_amounts = list(b_amounts)
 
     network_name: str = "BinanceCEX"
     network_id: str = network_names[network_name]
 
-    all_swaps: list = []
     for b_amount in b_amounts:
 
         # Deduct binance 0.1% fee before trading
@@ -169,7 +179,7 @@ def trade_b_for_a(token_a: str, token_b: str, b_amounts: list, asks: list) -> Li
     return all_swaps
 
 
-def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, bids: list) -> List[Swap]:
+def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, order_book: bytes) -> List[Swap]:
     """
     Given pair 'AB', by selling amount 'A', calculate the received amount of 'B'
     Based on Binance's order book bids. Returns none if trading pair not available.
@@ -177,15 +187,21 @@ def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, bids: list) -> Li
     :param token_a: Name of Token A
     :param token_b: Name of Token B
     :param a_amounts: List of amounts of token 'A' to swap in
-    :param bids: List of order book bids
+    :param order_book: Raw bytes string order book data
     :return: List of Swap dataclass: (chain, id, cost, from_token, to_token, remainder)
     """
+    all_swaps: list = []
+    if not order_book:
+        return all_swaps
+
+    order_book = ast.literal_eval(order_book.decode("utf-8"))  # Decode bytes string into a dictionary
+    bids = order_book['bids']
+
     a_amounts = list(a_amounts)
 
     network_name: str = "BinanceCEX"
     network_id: str = network_names[network_name]
 
-    all_swaps: list = []
     for a_amount in a_amounts:
 
         # Deduct binance 0.1% fee before trading
@@ -229,7 +245,13 @@ def trade_a_for_b(token_a: str, token_b: str, a_amounts: list, bids: list) -> Li
     return all_swaps
 
 
-def start_binance_streams(trading_pairs):
+def start_binance_streams(trading_pairs: List[str], debug: bool = False) -> None:
+    """
+    Starts a Binance WebSocket stream for each trading pair.
+
+    :param trading_pairs: List of trading pairs, eg. ['ETHUSDT', 'BTCUSDT']
+    :param debug: If True will print to terminal websocket output
+    """
     # Initialise BinanceDepthSocket with trading pairs
-    binance_socket = BinanceDepthSocket(trading_pairs)
+    binance_socket = BinanceDepthSocket(trading_pairs, debug=debug)
     binance_socket.run_forever()
