@@ -82,7 +82,7 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
     :param from_token: From token (swap in). Tuple format (address, name, decimals)
     :param to_token: To token (swap out). Tuple format (address, name, decimals)
     :param amount_float: Amount to swap in
-    :param timeout: Maximum time to wait per GET request
+    :param timeout: Maximum time to wait for request
     :param include_fees: Include Eth fees?
     :return: Swap dataclass: (network_name, network_id, cost, from_token, to_token)
     """
@@ -119,9 +119,9 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                                       f"{network_name}, {amount_float} {from_token_name} -> {to_token_name}")
                     return None
 
-        except ClientConnectorSSLError as e:
-            log_error.warning(f"'ConnectionError' - {e} - Unable to fetch amount for "
-                              f"{network_name} {from_token_name} -> {to_token_name}")
+        except Exception as e:
+            log_error.warning(f"'async_http_session.get' Error - {e} - Unable to fetch amount for "
+                              f"{network_name}, {from_token_name} -> {to_token_name}")
             return None
 
     swap_out = float(data['toTokenAmount'])
