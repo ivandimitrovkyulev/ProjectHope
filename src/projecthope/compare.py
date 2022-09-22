@@ -36,7 +36,7 @@ def max_swaps(swap_list: list, amounts: list | float) -> list[Swap]:
         highest_swap: Swap = swaps[highest_amount]
 
         # If highest arb is on Ethereum check txn cost
-        if int(highest_swap.id) == 1 and len(swaps) > 1:
+        if int(highest_swap.id) == 1 and len(swaps) > 1 and highest_swap.cost['usdt_cost']:
             # Get second highest amount
             second_amount = sorted(swaps)[-2]
             second_swap = swaps[second_amount]
@@ -52,7 +52,7 @@ def max_swaps(swap_list: list, amounts: list | float) -> list[Swap]:
 
             # Calculate token - fees difference
             difference_amount = (highest_amount - second_amount) * stable_token_ratio
-            if difference_amount > highest_swap.cost['usdc_cost']:
+            if difference_amount > highest_swap.cost['usdt_cost']:
                 return highest_swap
             else:
                 return second_swap
@@ -196,9 +196,9 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> tuple:
 
             # If any of the swaps are on Ethereum try to get gas cost in $
             if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
-                if fee1 := swap_ab.cost.get('usdc_cost'):
+                if fee1 := swap_ab.cost.get('usdt_cost'):
                     fee_msg = f", fees ~${fee1:,.0f}"
-                elif fee2 := swap_ba.cost.get('usdc_cost'):
+                elif fee2 := swap_ba.cost.get('usdt_cost'):
                     fee_msg = f", fees ~${fee2:,.0f}"
                 else:
                     fee_msg = f", fees n/a"

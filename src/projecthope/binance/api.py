@@ -99,7 +99,7 @@ class BinanceDepthSocket:
                 print(stream_data)
 
             if update_id >= self._last_update_id[stream_name]:
-                memcache.set(key=stream_name, value=stream_data, expire=30)
+                memcache.set(key=stream_name, value=stream_data, expire=20)
 
             self._last_update_id[stream_name] = update_id  # Save last id for each stream in dict
 

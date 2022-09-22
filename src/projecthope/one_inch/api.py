@@ -2,10 +2,7 @@ import ast
 import json
 
 from json.decoder import JSONDecodeError
-from aiohttp import (
-    ClientSession,
-    ClientConnectorSSLError,
-)
+from aiohttp import ClientSession
 
 from src.projecthope.blockchain.evm import EvmContract
 from src.projecthope.datatypes import (
@@ -62,12 +59,18 @@ def get_eth_fees(cost: dict, gas_amount: int, bridge_fees_eth: float = 0.005510)
     if gas_price:
         cost['gas_price'] = gas_price
 
-    ethusdt_price = get_ethusdt_price()
-    if ethusdt_price:
-        gas_cost_usdc = ((gas_amount * gas_price) / 10 ** 18) * ethusdt_price
-        bridge_cost_usdc = bridge_fees_eth * ethusdt_price
+        ethusdt_price = get_ethusdt_price()
+        if ethusdt_price:
+            gas_cost_usdt = ((gas_amount * gas_price) / 10 ** 18) * ethusdt_price
+            bridge_cost_usdt = bridge_fees_eth * ethusdt_price
 
-        cost['usdc_cost'] = gas_cost_usdc + bridge_cost_usdc
+            cost['usdt_cost'] = gas_cost_usdt + bridge_cost_usdt
+        else:
+            cost['usdt_cost'] = None
+
+    else:
+        cost['gas_price'] = None
+        cost['usdt_cost'] = None
 
     return cost
 
@@ -111,17 +114,18 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                 try:
                     data = json.loads(await response.text())
                 except JSONDecodeError as e:
-                    log_error.warning(f"'JSONError' - {response.status} - {e} - {response.url}")
+                    log_error.warning(f"'get_swapout', 'JSONError', status: {response.status}, {response.url} - "
+                                      f"{network_name}, {amount_float} {from_token_name} -> {to_token_name} - {e}")
                     return None
 
                 if response.status != 200:
-                    log_error.warning(f"'ResponseError' {response.status}, {data['error']} - "
+                    log_error.warning(f"'get_swapout', 'ResponseError', status: {response.status}, {data['error']} - "
                                       f"{network_name}, {amount_float} {from_token_name} -> {to_token_name}")
                     return None
 
         except Exception as e:
-            log_error.warning(f"'async_http_session.get' Error - {e} - Unable to fetch amount for "
-                              f"{network_name}, {from_token_name} -> {to_token_name}")
+            log_error.warning(f"'get_swapout', 'async_http_sessionError' - could not connect to {response.url}, "
+                              f"{network_name}, {from_token_name} -> {to_token_name} - {e}")
             return None
 
     swap_out = float(data['toTokenAmount'])

@@ -39,7 +39,7 @@ class EvmContract:
         self.w3.middleware_onion.add(middleware.latest_block_based_cache_middleware)
         self.w3.middleware_onion.add(middleware.simple_cache_middleware)
 
-    def eth_gas_price(self, expire_after: int = 720) -> int | None:
+    def eth_gas_price(self, expire_after: int = 900) -> int | None:
         """
         Get a quote for Eth gas price for a transaction to get mined.
         Set to 30secs max_wait, 60 sample_size, 98 probability & weighted False.
