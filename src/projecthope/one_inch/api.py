@@ -77,7 +77,7 @@ def get_eth_fees(cost: dict, gas_amount: int, bridge_fees_eth: float = 0.005510)
 
 @count_func_calls
 async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
-                      amount_float: float, timeout: int = 3, include_fees: bool = True) -> Swap | None:
+                      amount_float: float, timeout: int = 4, include_fees: bool = True) -> Swap | None:
     """
     Queries https://app.1inch.io for swap_out amount between 2 tokens on a given network.
 
@@ -124,8 +124,9 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
                     return None
 
         except Exception as e:
-            log_error.warning(f"'get_swapout', 'async_http_sessionError' - could not connect to {response.url}, "
-                              f"{network_name}, {from_token_name} -> {to_token_name} - {e}")
+            log_error.warning(f"'get_swapout', 'async_http_session' Error - could not connect to "
+                              f"{api}?fromTokenAddress={from_token_addr}"
+                              f"&toTokenAddress={to_token_addr}&amount={amount} - {e}")
             return None
 
     swap_out = float(data['toTokenAmount'])
