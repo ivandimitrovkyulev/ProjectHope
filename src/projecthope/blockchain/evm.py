@@ -30,8 +30,8 @@ class EvmContract:
 
         self.w3 = Web3(Web3.HTTPProvider(self.infura_url))
 
-        #Construct and set a default gas strategy
-        gas_str = construct_time_based_gas_price_strategy(max_wait_seconds=30, sample_size=1,
+        # Construct and set a default gas strategy
+        gas_str = construct_time_based_gas_price_strategy(max_wait_seconds=30, sample_size=3,
                                                           probability=98, weighted=False)
         self.w3.eth.set_gas_price_strategy(gas_str)
 

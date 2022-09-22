@@ -1,7 +1,6 @@
-import os
+import ast
 import json
 
-from requests.exceptions import ReadTimeout
 from json.decoder import JSONDecodeError
 from aiohttp import (
     ClientSession,
@@ -18,71 +17,55 @@ from src.projecthope.common.logger import log_error
 from src.projecthope.common.variables import (
     network_ids,
     memcache,
-    http_session,
     timeout_class,
 )
 
 
-def get_ethusd_price(timeout: int = 3, expire_after: int = 720) -> float | None:
+# Create an EVM contract class
+contract = EvmContract()
+
+
+def get_ethusdt_price() -> float | None:
     """
-    Get the ETH/USD price from etherscan.io and memcache the request for a specified amount of time.
-
-    :param timeout: :param timeout: Maximum time to wait per GET request
-    :param expire_after: Number of seconds until memcached is cleared
-    :return: The price of Eth in USD or None
+    Get the ETH/USDT price from Binance 'ETHUSDT' WebSocket stream.
     """
-    eth_usdc_price: bytes = memcache.get("eth_usdc_price")
 
-    if not eth_usdc_price:
-        api = f"https://api.etherscan.io/api?module=stats&action=ethprice&apikey={os.getenv('ETHERSCAN_API_KEY')}"
-        try:
-            response = http_session.get(api, timeout=timeout)
-        except ConnectionError or ReadTimeout as e:
-            log_error.warning(f"'ConnectionError' - {e}")
-            return None
+    order_book: bytes = memcache.get(key="ETHUSDT", default=None)
+    if not order_book:
+        return None
 
-        try:
-            data = json.loads(response.content)
-        except JSONDecodeError:
-            log_error.warning(f"'JSONError' {response.status_code} - {response.url}")
-            return None
+    order_book: dict = ast.literal_eval(order_book.decode("utf-8"))  # Decode bytes string into a dictionary
+    try:
+        eth_usdt_price = float(order_book['bids'][0][0])
 
-        if int(data['status']) == 1:
-            price = float(data['result']['ethusd'])
-            memcache.set(key="eth_usdc_price", value=price, expire=expire_after,)
+        return eth_usdt_price
 
-            return price
+    except Exception as e:
+        log_error.error(f"'get_ethusd_price' Error - can not query ETH/USDT price. {e}")
 
-        else:
-            log_error.warning(f"'EtherscanAPI' {response.status_code} - {data['result']}")
-            return None
-
-    return float(eth_usdc_price.decode("utf-8"))
+        return None
 
 
-def get_eth_fees(cost: dict, gas_amount: int, bridge_fees_eth: float = 0.005510, timeout: int = 3) -> dict:
+def get_eth_fees(cost: dict, gas_amount: int, bridge_fees_eth: float = 0.005510) -> dict:
     """
-    Calculates fees on Ethereum in USD dollars. Adds 'gas_price' and 'usdc_cost' to cost dictionary.
-    Queries https://etherscan.io for ETH/USD info and caches result to avoid rate limit.
+    Calculates fees on Ethereum in USDT. Adds 'gas_price' and 'usdc_cost' to cost dictionary.
+    Queries Binance WebSocket for ETH/USDT info then caches it.
 
     :param cost: Dictionary with cost data to transform
     :param gas_amount: Gas amount for transaction to be executed
     :param bridge_fees_eth: Eth bridge fees, default 0.005510 ETH
-    :param timeout: Maximum time to wait per GET request
     :return: Dictionary with updated cost data
     """
-    # Create an EVM contract class
-    contract = EvmContract()
 
     # Get ETH gas price from Web3. Result is cached for 1200 secs before querying again
     gas_price = contract.eth_gas_price()
     if gas_price:
         cost['gas_price'] = gas_price
 
-    eth_usdc_price = get_ethusd_price(timeout)
-    if eth_usdc_price:
-        gas_cost_usdc = ((gas_amount * gas_price) / 10 ** 18) * eth_usdc_price
-        bridge_cost_usdc = bridge_fees_eth * eth_usdc_price
+    ethusdt_price = get_ethusdt_price()
+    if ethusdt_price:
+        gas_cost_usdc = ((gas_amount * gas_price) / 10 ** 18) * ethusdt_price
+        bridge_cost_usdc = bridge_fees_eth * ethusdt_price
 
         cost['usdc_cost'] = gas_cost_usdc + bridge_cost_usdc
 
@@ -149,7 +132,7 @@ async def get_swapout(network_id: str, from_token: tuple, to_token: tuple,
 
     # Calculate fees on Ethereum only and add to cost dictionary
     if include_fees and int(network_id) == 1:
-        get_eth_fees(cost, gas_amount, timeout=3)
+        get_eth_fees(cost, gas_amount)
 
     from_token = Token(from_token_name, amount_float, from_token_decimal)
     to_token = Token(to_token_name, swap_out_float, to_token_decimal)

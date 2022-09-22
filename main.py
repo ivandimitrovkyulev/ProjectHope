@@ -29,6 +29,7 @@ from src.projecthope.common.variables import (
 def arb_screener(args: list, time_to_sleep: int) -> None:
     """
     Main function that constantly screens for arbitrage between 1inch and binance trading pairs.
+
     :param args: Arguments list to pass
     :param time_to_sleep: While loop sleep time
     """
@@ -38,15 +39,11 @@ def arb_screener(args: list, time_to_sleep: int) -> None:
         start = perf_counter()
 
         with ThreadPoolExecutor(max_workers=len(args)) as executor:
-            results = executor.map(lambda p: alert_arb(*p), args, timeout=10)
+            arbs = executor.map(lambda p: alert_arb(*p), args, timeout=10)
 
-        try:
-            for result in results:
-                if result:
-                    log_error.info(result)
-
-        except Exception as e:
-            log_error.error(e)
+        for arb in arbs:
+            if not arb:
+                log_error.warning(f"'alert_arb' Error - {arb[0]} -> {arb[1]}")
 
         sleep(time_to_sleep)
 

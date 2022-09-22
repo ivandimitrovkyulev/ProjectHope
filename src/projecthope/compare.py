@@ -1,4 +1,3 @@
-import ast
 import asyncio
 
 from datetime import datetime
@@ -88,7 +87,7 @@ def max_swaps(swap_list: list, amounts: list | float) -> list[Swap]:
 
 def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap]] | None:
     """
-    Compares 1inch supported blockchains for arbitrage between 2 tokens.
+    Compares 1inch supported blockchains and Binance CEX for arbitrage between 2 tokens.
 
     :param data: Input dictionary data
     :param base_token: Name of Base token being swapped in
@@ -102,8 +101,8 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     results = asyncio.run(gather_funcs(get_swapout, args_ab))
 
     # Get Binance CEX prices and combine with all swaps
-    asks = memcache.get(key=f"{arb_token}{base_token}", default=None)
-    binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts, asks)
+    order_book_asks: bytes = memcache.get(key=f"{arb_token}{base_token}", default=None)
+    binance_swaps_ab = trade_b_for_a(arb_token, base_token, amounts, order_book_asks)
     swaps_ab = list(binance_swaps_ab) + list(results)
 
     # Get the maximum Swap for each range respectively
@@ -122,8 +121,8 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
         results = asyncio.run(gather_funcs(get_swapout, args_ba))
 
         # Get Binance CEX prices and a combine with all swaps
-        bids = memcache.get(key=f"{arb_token}{base_token}", default=None)
-        binance_swaps_ba = trade_a_for_b(arb_token, base_token, [max_amount_ab], bids)
+        order_book_bids: bytes = memcache.get(key=f"{arb_token}{base_token}", default=None)
+        binance_swaps_ba = trade_a_for_b(arb_token, base_token, [max_amount_ab], order_book_bids)
         swaps_ba = list(binance_swaps_ba) + list(results)
 
         # Get the maximum swap out - should be list of only 1 item!
@@ -136,20 +135,21 @@ def compare_swaps(data: dict, base_token: str, arb_token: str) -> List[List[Swap
     return all_max_swaps
 
 
-def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
+def alert_arb(data: dict, base_token: str, arb_token: str) -> tuple:
     """
     Alerts via Telegram for arbitrage between 2 tokens.
 
     :param data: Input dictionary data with coins
     :param base_token: Name of Base token being swapped in
     :param arb_token: Name of token being Arbitraged
+    :returns: Base token & Arb token
     """
     # Get arbitrage data pairs for each amount swapped
     max_swap_pairs = compare_swaps(data['coins'], base_token, arb_token)
 
     # If max_swap_pairs is an empty list - return
     if not max_swap_pairs:
-        return
+        return base_token, arb_token
 
     for max_swap_pair in max_swap_pairs:
 
@@ -175,18 +175,18 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
         if arbitrage >= min_arb:
             timestamp = datetime.now().astimezone().strftime(time_format)
 
-            swap_1 = f"1) Sell {base_swap_in:,.0f} {base_token} for {arb_swap_out:,.4f} {arb_token} on {chain1}"
-            swap_2 = f"2) Sell {arb_swap_in:,.4f} {arb_token} for {base_swap_out:,.0f} {base_token} on {chain2}"
-            arb_string = f"{arbitrage:,.0f} {base_token}"
+            swap_1 = f"1) Buy {base_swap_in:,.0f} {base_token} -> {arb_swap_out:,.2f} {arb_token} on {chain1}"
+            swap_2 = f"2) Sell {arb_swap_in:,.2f} {arb_token} -> {base_swap_out:,.0f} {base_token} on {chain2}"
+            arb_string = f"<u>{arbitrage:,.0f} {base_token}</u>"
 
             if chain1.lower() == "binancecex":
-                swap_1_link = f"<a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_1}</a>"
+                swap_1_link = f"<a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_1} 🟧</a>"
             else:
                 swap_1_link = f"<a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
                               f"{swap_1}</a>"
 
             if chain2.lower() == "binancecex":
-                swap_2_link = f"<a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_2}</a>"
+                swap_2_link = f"<a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_2} 🟧</a>"
             else:
                 swap_2_link = f"<a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
                               f"{swap_2}</a>"
@@ -197,13 +197,13 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
             # If any of the swaps are on Ethereum try to get gas cost in $
             if int(swap_ab.id) == 1 or int(swap_ba.id) == 1:
                 if fee1 := swap_ab.cost.get('usdc_cost'):
-                    fee_msg = f", eth fees ~${fee1:,.0f}"
+                    fee_msg = f", fees ~${fee1:,.0f}"
                 elif fee2 := swap_ba.cost.get('usdc_cost'):
-                    fee_msg = f", eth fees ~${fee2:,.0f}"
+                    fee_msg = f", fees ~${fee2:,.0f}"
                 else:
-                    fee_msg = f", eth fees n/a"
+                    fee_msg = f", fees n/a"
             else:
-                fee_msg = f", eth fees n/a"
+                fee_msg = f", fees n/a"
 
             telegram_msg += fee_msg
             terminal_msg += fee_msg
@@ -212,3 +212,5 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> None:
             telegram_send_message(telegram_msg)
             log_arbitrage.info(terminal_msg)
             print(f"{terminal_msg}\n")
+
+    return base_token, arb_token

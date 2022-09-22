@@ -26,6 +26,7 @@ class BinanceDepthSocket:
         :param level: Binance socket depth level, eg. 5, 10, 20
         :param update_speed: Real time update speed, 1000ms or 100ms
         """
+        symbols.append('ETHUSDT')  # Add ETHUSDT to query the price of ETH/USD for fee calculation
         self.symbols = [f"{symbol.lower()}@depth{level}@{update_speed}ms" for symbol in symbols]
         self._last_update_id = {symbol.upper(): 0 for symbol in symbols}
         self.debug = debug
@@ -81,13 +82,13 @@ class BinanceDepthSocket:
 
     @staticmethod
     def on_open(socket):
-        """Websocket on_open method handler."""
+        """WebSocket on_open method handler."""
         message = f">>> Opened connection: {socket.url}"
         print(message)
         print(f"Started listening to streams...")
 
     def on_message(self, socket, message):
-        """Websocket on_message method handler."""
+        """WebSocket on_message method handler."""
         data = ast.literal_eval(message)  # Convert data into a dict
         try:
             stream_name: str = data['stream'].split('@')[0].upper()  # Get the trading pair part only, eg. 'ETHUSDT'

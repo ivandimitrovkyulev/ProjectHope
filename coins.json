@@ -25,13 +25,6 @@
                 "Gnosis":    {"address": "0x4ECaBa5870353805a9F068101A40E0f32ed605C6", "decimals": 6}
             }
         },
-        "GNO": {
-            "swap_amount": [3500], "min_arb": 50,
-            "networks": {
-                "Ethereum":  {"address": "0x6810e776880C02933D47DB1b9fc05908e5386b96", "decimals": 18},
-                "Gnosis":    {"address": "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb", "decimals": 18}
-            }
-        },
         "WBTC": {
             "swap_amount": [8000], "min_arb": 50,
             "networks": {
