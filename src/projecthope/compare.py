@@ -177,7 +177,7 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> tuple:
 
             swap_1 = f"Buy {base_swap_in:,.0f} {base_token} -> {arb_swap_out:,.2f} <u>{arb_token}</u> on {chain1}"
             swap_2 = f"Sell {arb_swap_in:,.2f} <u>{arb_token}</u> -> {base_swap_out:,.0f} {base_token} on {chain2}"
-            arb_string = f"<u>{arbitrage:,.0f} {base_token}</u>"
+            arb_string = f"<b>{arbitrage:,.0f} {base_token}</b>"
 
             if chain1.lower() == "binancecex":
                 swap_1_link = f"1) <a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_1} 🟧</a>"
@@ -191,7 +191,7 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> tuple:
                 swap_2_link = f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
                               f"{swap_2}</a>"
 
-            telegram_msg = f"{timestamp}\n{swap_1_link}\n{swap_2_link}\n-->Arbitrage: {arb_string}"
+            telegram_msg = f"{timestamp}\n{swap_1_link}\n{swap_2_link}\n-->Arb. {arb_string}"
             terminal_msg = f"{swap_1}\n{swap_2}\n-->Arbitrage: {arb_string}"
 
             # If any of the swaps are on Ethereum try to get gas cost in $
