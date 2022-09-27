@@ -175,20 +175,20 @@ def alert_arb(data: dict, base_token: str, arb_token: str) -> tuple:
         if arbitrage >= min_arb:
             timestamp = datetime.now().astimezone().strftime(time_format)
 
-            swap_1 = f"1) Buy {base_swap_in:,.0f} {base_token} -> {arb_swap_out:,.2f} {arb_token} on {chain1}"
-            swap_2 = f"2) Sell {arb_swap_in:,.2f} {arb_token} -> {base_swap_out:,.0f} {base_token} on {chain2}"
+            swap_1 = f"Buy {base_swap_in:,.0f} {base_token} -> {arb_swap_out:,.2f} <u>{arb_token}</u> on {chain1}"
+            swap_2 = f"Sell {arb_swap_in:,.2f} <u>{arb_token}</u> -> {base_swap_out:,.0f} {base_token} on {chain2}"
             arb_string = f"<u>{arbitrage:,.0f} {base_token}</u>"
 
             if chain1.lower() == "binancecex":
-                swap_1_link = f"<a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_1} 🟧</a>"
+                swap_1_link = f"1) <a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_1} 🟧</a>"
             else:
-                swap_1_link = f"<a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
+                swap_1_link = f"1) <a href='https://app.1inch.io/#/{swap_ab.id}/swap/{base_token}/{arb_token}'>" \
                               f"{swap_1}</a>"
 
             if chain2.lower() == "binancecex":
-                swap_2_link = f"<a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_2} 🟧</a>"
+                swap_2_link = f"2) <a href='https://www.binance.com/en/trade/{arb_token}_{base_token}'>{swap_2} 🟧</a>"
             else:
-                swap_2_link = f"<a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
+                swap_2_link = f"2) <a href='https://app.1inch.io/#/{swap_ba.id}/swap/{arb_token}/{base_token}'>" \
                               f"{swap_2}</a>"
 
             telegram_msg = f"{timestamp}\n{swap_1_link}\n{swap_2_link}\n-->Arbitrage: {arb_string}"
