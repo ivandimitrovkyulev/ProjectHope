@@ -1,6 +1,6 @@
 # ProjectHope v0.0.1
 
-ProjectHope screens for arbitrage and alerts via a Telegram message if something of interest is found.
+ProjectHope screens for arbitrage between BinanceCEX and 1inch smart order router. Alerts via Telegram message if something above minimum threshold is found.
 
 <br>
 
