@@ -1,16 +1,14 @@
-# ProjectHope v0.0.1
+# ProjectHope v0.1.0
 
-ProjectHope screens for arbitrage between BinanceCEX and 1inch smart order router. Alerts via Telegram message if something above minimum threshold is found.
+ProjectHope screens for arbitrage between BinanceCEX and 1inch Smart Order Router. Alerts via Telegram message if something above minimum threshold is found.
 
-<br>
 
 ## Installation ##
-<br>
 
 This project uses **Python 3.10** and **poetry 1.1.13**
 
 Clone the project:
-```
+```shell
 git clone https://github.com/ivandimitrovkyulev/ProjectHope.git
 
 cd ProjectHope
@@ -18,17 +16,17 @@ cd ProjectHope
 
 Activate virtual environment:
 
-```
+```shell
 poetry shell
 ```
 
 Install all third-party project dependencies:
-```
+```shell
 poetry install
 ```
 
 Create a Telegram Bot and save the following variables in a **.env** file in **./ProjectHope**:
-```
+```dotenv
 TOKEN=<telegram-token-for-your-bot>
 CHAT_ID_ALERTS=<id-of-telegram-chat-for-alerts>
 CHAT_ID_DEBUG=<id-of-telegram-chat-for-debugging>
@@ -37,20 +35,19 @@ ETHERSCAN_API_KEY=<etherscan-api-key>
 BINANCE_KEY=<binance-api-key>
 BINANCE_SECRET=<binance-secret-key>
 ```
-<br/>
 
 ## Running the script
-<br/>
 
 To start screening for arbitrage:
-```
+```shell
+# Save json file in a variable
 var="$(cat coins.json)"
-
+# Run script
 python3 main.py -s "$var"
 ```
 
 Where **coins.json** are variables for screening:
-```
+```json
 {
     "base_tokens": {
         "USDC": {
@@ -82,20 +79,26 @@ Where **coins.json** are variables for screening:
 
 }
 ```
-<br>
+
+If an arbitrage is present, the alert message will have the following format:
+```text
+22/10/17 15:13:22, UTC
+1) Buy 8,000 USDT -> 0.42 WBTC on BinanceCEX🟧
+2) Sell 0.42 WBTC -> 8,100 USDT on Optimism
+-->Arb. 100 USDT, fees ~$64
+```
 
 All log filles are saved in **./ProjectHope/logs**
 
 For help:
-```
+```shell
 python3 main.py --help
 ```
-<br>
+
 
 ## Docker Deploy ##
-<br>
 
-```
+```shell
 # To build a Docker image
 docker build . -t <docker-image-name>
 
@@ -105,4 +108,4 @@ docker run --name="projecthope" -it "<image-id>" python3 main.py "$var"
 ```
 
 <br>
-Contact: ivandkyulev@gmai.com
+Contact: ivandkyulev@gmail.com

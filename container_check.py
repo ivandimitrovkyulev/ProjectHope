@@ -54,7 +54,8 @@ values = [val for val in env_text.split("\n") if val != ""]
 env_vals = {}
 for val in values:
     buff = val.split("=")
-    env_vals[f"{buff[0]}"] = buff[1]
+    if len(buff) == 2:
+        env_vals[f"{buff[0]}"] = buff[1]
 
 chat_id_alerts = env_vals['CHAT_ID_ALERTS']
 chat_id_debug = env_vals['CHAT_ID_DEBUG']
