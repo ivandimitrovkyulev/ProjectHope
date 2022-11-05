@@ -1,9 +1,13 @@
-# ProjectHope v0.1.0
+ProjectHope
+===================
+# version 0.1.0
+
+---------------------------------------------------------------------------------------
 
 ProjectHope screens for arbitrage between BinanceCEX and 1inch Smart Order Router. Alerts via Telegram message if something above minimum threshold is found.
 
 
-## Installation ##
+### Installation
 
 This project uses **Python 3.10** and **poetry 1.1.13**
 
@@ -36,7 +40,7 @@ BINANCE_KEY=<binance-api-key>
 BINANCE_SECRET=<binance-secret-key>
 ```
 
-## Running the script
+### Running the script
 
 To start screening for arbitrage:
 ```shell
