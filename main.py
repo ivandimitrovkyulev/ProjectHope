@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import time
 
 from atexit import register
 from datetime import datetime
@@ -84,5 +83,11 @@ if __name__ == "__main__":
     main_screener = Process(target=arb_screener, args=(arguments, sleep_time, ))
 
     binance_stream.start()  # Start Process 1 - Binance WebSocket streams
-    time.sleep(3)  # Wait initially for WebSocket handshake
+    sleep(3)  # Wait initially for WebSocket handshake
     main_screener.start()  # Start Process 2 - Main arbitrage screener loop
+
+    while True:
+        sleep(86395)  # Restart every 23:55 hours and restart binance stream
+        binance_stream.terminate()
+        binance_stream = Process(target=start_binance_streams, args=(trading_pairs,))
+        binance_stream.start()
