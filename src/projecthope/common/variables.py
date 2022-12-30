@@ -41,7 +41,7 @@ http_session.mount("http://", adapter)
 # Configure aiohttp timeout
 timeout_class = ClientTimeout(total=3)
 
-time_format = "%y/%m/%d %H:%M:%S, %Z"
+time_format = "%Y-%m-%d %H:%M:%S, %Z"
 
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
 time_format_regex = compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}, [A-Za-z]*")
